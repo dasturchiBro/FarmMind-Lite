@@ -1,7 +1,7 @@
-Name and School: Fayozbek Erkinjonov - The Specialized School of Pop District in Uzbekistan
-Date: 02/07/26
-Project Name: FarmMind Lite
-Description: FarmMind Lite is a comprehensive farm management and marketplace platform designed to empower smallholder farmers with AI-driven insights, real-time market data, and a robust trading ecosystem.
+## Name and School: Fayozbek Erkinjonov - The Specialized School of Pop District in Uzbekistan
+## Date: 02/07/26
+## Project Name: FarmMind Lite
+## Description: FarmMind Lite is a comprehensive farm management and marketplace platform designed to empower smallholder farmers with AI-driven insights, real-time market data, and a robust trading ecosystem.
 
 
 
