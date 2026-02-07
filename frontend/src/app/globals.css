@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-green: #10b981;
+  /* Emerald 500 - Brighter, more modern */
+  --color-brand-dark: #022c22;
+  /* Emerald 950 - Deepest Green */
+  --color-brand-gold: #fbbf24;
+  /* Amber 400 - Gold Accent */
+
+  --color-surface-50: #fafaf9;
+  /* Warm Stone 50 */
+  --color-surface-100: #f5f5f4;
+  /* Warm Stone 100 */
+  --color-surface-200: #e7e5e4;
+  /* Warm Stone 200 */
+
+  --font-display: "Outfit", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+}
+
+:root {
+  --foreground-rgb: 2, 44, 34;
+  --background-rgb: 250, 250, 249;
+}
+
+body {
+  color: var(--color-brand-dark);
+  background-color: var(--color-surface-50);
+  background-image:
+    radial-gradient(circle at 10% 10%, rgba(16, 185, 129, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 90% 90%, rgba(251, 191, 36, 0.03) 0%, transparent 40%);
+  min-height: 100vh;
+  font-family: var(--font-body);
+  letter-spacing: -0.01em;
+}
+
+/* Glassmorphism Utilities */
+@utility glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: var(--shadow-glass);
+  border-radius: 20px;
+}
+
+@utility glass-panel {
+  @apply glass-card;
+}
+
+@utility glass-card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    transform: translateY(-4px);
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(16, 185, 129, 0.2);
+    box-shadow: 0 20px 40px -4px rgba(0, 0, 0, 0.08);
+  }
+}
+
+/* Typography */
+@utility heading-xl {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--color-brand-dark);
+  line-height: 1.1;
+}
+
+@utility text-subtle {
+  color: #57534e;
+  /* Stone 600 - Warmer grey */
+}
+
+/* Form Elements */
+@utility input-modern {
+  background: white;
+  border: 1px solid var(--color-surface-200);
+  color: var(--color-brand-dark);
+  border-radius: 12px;
+  padding: 0.875rem 1.25rem;
+  transition: all 0.2s ease;
+  outline: none;
+  font-size: 0.95rem;
+  appearance: none;
+  /* Removes default arrow */
+
+  /* Custom Arrow for Selects */
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 1rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+  /* Space for the arrow */
+
+  &:focus {
+    border-color: var(--color-brand-green);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+  }
+
+  /* Remove background image for non-select inputs if needed, 
+     but since this utility is applied to selects specifically in many places, 
+     it's better to keep it or override for text inputs if they show the arrow. 
+     However, standard text inputs won't show the background image unless we enforce it. 
+     To be safe, let's create a specific utility for selects or ensure text inputs reset it.
+     Actually, better to ONLY apply the background image to selects. 
+  */
+}
+
+/* Specific override for text/number/date inputs to NOT show the arrow if they use the same class */
+input.input-modern,
+textarea.input-modern {
+  background-image: none;
+  padding-right: 1.25rem;
+}
+
+/* Buttons */
+@utility btn-primary {
+  background: var(--color-brand-green);
+  color: white;
+  font-weight: 600;
+  border-radius: 14px;
+  padding: 0.875rem 2rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  &:hover {
+    background: #059669;
+    /* Emerald 600 */
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+  }
+}
+
+@utility btn-secondary {
+  background: white;
+  color: var(--color-brand-dark);
+  border: 1px solid var(--color-surface-200);
+  font-weight: 600;
+  border-radius: 14px;
+  padding: 0.875rem 2rem;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: var(--color-surface-50);
+    border-color: var(--color-surface-200);
+  }
+}

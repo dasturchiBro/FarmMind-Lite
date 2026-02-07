@@ -1,0 +1,28 @@
+# Root level filters (User request: Ignore .md and .txt in main section except README)
+/*.md
+/*.txt
+!/README.md
+
+# Build and Dependency folders
+node_modules/
+.next/
+dist/
+build/
+bin/
+out/
+
+# Environment and Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Backend Binaries
+*.exe
+*.test
+*.bin

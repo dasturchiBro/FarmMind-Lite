@@ -1,0 +1,255 @@
+// This file contains the full implementations for Watchlist, Demands, and Analytics sections
+// To be inserted into marketplace page.js
+
+/* WATCHLIST IMPLEMENTATION - Replace lines 613-620 */
+{mode === 'watchlist' && (
+    <div>
+        {watchlistData.length === 0 ? (
+            <div className="glass-panel p-12 text-center">
+                <Heart className="w-16 h-16 text-brand-green mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-brand-dark mb-2">Your Watchlist is Empty</h3>
+                <p className="text-subtle">Save listings you're interested in to track them here!</p>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {watchlistData.map(listing => (
+                    <motion.div
+                        key={listing.id}
+                        onClick={() => openListingDetail(listing)}
+                        className="glass-panel overflow-hidden group hover:shadow-2xl hover:shadow-brand-dark/5 transition-all duration-300 cursor-pointer relative"
+                        whileHover={{ y: -5 }}
+                    >
+                        <button
+                            onClick={(e) => { e.stopPropagation(); toggleSave(listing.id); }}
+                            className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-md p-2 rounded-full hover:bg-white transition-all"
+                        >
+                            <Heart className="w-5 h-5 fill-red-500 text-red-500" />
+                        </button>
+
+                        <div className="h-48 w-full bg-surface-100 relative overflow-hidden">
+                            {listing.image_url ? (
+                                <img src={`http://localhost:8080${listing.image_url}`} alt={listing.crop_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-subtle bg-surface-200">
+                                    <Store className="w-10 h-10 opacity-30" />
+                                </div>
+                            )}
+                            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold text-brand-dark shadow-sm">
+                                {listing.region}
+                            </div>
+                        </div>
+
+                        <div className="p-6">
+                            <div className="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 className="text-xl font-bold text-brand-dark">{listing.crop_name}</h3>
+                                    <div className="text-sm text-subtle flex items-center gap-1 mt-1">
+                                        <span className="font-medium text-brand-green">{listing.farmer_name}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-2xl font-black text-brand-dark">${listing.price_per_kg}</div>
+                                    <div className="text-xs text-subtle font-medium">per kg</div>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-surface-50 p-2 rounded-lg text-center border border-surface-100">
+                                    <div className="text-xs text-subtle font-bold uppercase">Harvest</div>
+                                    <div className="text-sm font-semibold text-brand-dark truncate">{listing.harvest_ready_date || 'Ready Now'}</div>
+                                </div>
+                                <div className="bg-surface-50 p-2 rounded-lg text-center border border-surface-100">
+                                    <div className="text-xs text-subtle font-bold uppercase">Stock</div>
+                                    <div className="text-sm font-semibold text-brand-dark">{listing.quantity_kg} kg</div>
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+                ))}
+            </div>
+        )}
+    </div>
+)}
+
+/* DEMANDS IMPLEMENTATION - Replace lines 622-629 */
+{mode === 'demands' && (
+    <div className="space-y-8">
+        {/* Create Demand Button for Buyers */}
+        {user?.role !== 'farmer' && (
+            <div className="flex justify-end">
+                <button onClick={() => setShowDemandForm(!showDemandForm)} className="btn-primary shadow-lg shadow-brand-green/30">
+                    {showDemandForm ? <><X className="w-5 h-5" /> Cancel</> : <><Plus className="w-5 h-5" /> Post Request</>}
+                </button>
+            </div>
+        )}
+
+        {/* Demand Form */}
+        <AnimatePresence>
+            {showDemandForm && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                    <div className="glass-panel p-8 border-2 border-brand-green/20">
+                        <h2 className="text-2xl font-bold mb-6 text-brand-dark flex items-center gap-2">
+                            <Package className="w-6 h-6 text-brand-green" /> Post Buyer Request
+                        </h2>
+                        <form onSubmit={handleCreateDemand} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-bold text-brand-dark mb-2">Crop Type</label>
+                                <select value={demandFormData.crop_type_id} onChange={e => setDemandFormData({ ...demandFormData, crop_type_id: e.target.value })} className="input-modern w-full" required>
+                                    <option value="">Select crop</option>
+                                    {crops.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-brand-dark mb-2">Quantity Needed (kg)</label>
+                                <input type="number" placeholder="500" value={demandFormData.quantity_kg} onChange={e => setDemandFormData({ ...demandFormData, quantity_kg: e.target.value })} className="input-modern w-full" required />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-brand-dark mb-2">Max Price per kg ($)</label>
+                                <input type="number" placeholder="0.50" step="0.01" value={demandFormData.max_price_per_kg} onChange={e => setDemandFormData({ ...demandFormData, max_price_per_kg: e.target.value })} className="input-modern w-full" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-brand-dark mb-2">Needed By</label>
+                                <input type="date" value={demandFormData.needed_by} onChange={e => setDemandFormData({ ...demandFormData, needed_by: e.target.value })} className="input-modern w-full" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-brand-dark mb-2">Region</label>
+                                <input type="text" placeholder="Tashkent" value={demandFormData.region} onChange={e => setDemandFormData({ ...demandFormData, region: e.target.value })} className="input-modern w-full" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-bold text-brand-dark mb-2">Description</label>
+                                <textarea placeholder="Describe your requirements..." value={demandFormData.description} onChange={e => setDemandFormData({ ...demandFormData, description: e.target.value })} className="input-modern w-full h-24 resize-none" />
+                            </div>
+                            <div className="md:col-span-2">
+                                <button type="submit" className="btn-primary w-full py-3">Post Request</button>
+                            </div>
+                        </form>
+                    </div>
+                </motion.div>
+            )}
+        </AnimatePresence>
+
+        {/* Demands List */}
+        {demandRequests.length === 0 ? (
+            <div className="glass-panel p-12 text-center">
+                <Package className="w-16 h-16 text-brand-green mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-brand-dark mb-2">No Buyer Requests Yet</h3>
+                <p className="text-subtle">Buyers can post what they need, and farmers can respond directly!</p>
+            </div>
+        ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {demandRequests.map(demand => (
+                    <div key={demand.id} className="glass-panel p-6 hover:shadow-lg transition-shadow">
+                        <div className="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 className="text-xl font-bold text-brand-dark">{demand.crop_name}</h3>
+                                <p className="text-sm text-subtle">{demand.buyer_name} • {demand.region}</p>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-lg font-bold text-brand-green">{demand.quantity_kg} kg</div>
+                                {demand.max_price_per_kg && (
+                                    <div className="text-xs text-subtle">Max ${demand.max_price_per_kg}/kg</div>
+                                )}
+                            </div>
+                        </div>
+                        {demand.description && (
+                            <p className="text-sm text-subtle mb-4">{demand.description}</p>
+                        )}
+                        <div className="flex items-center justify-between pt-3 border-t border-surface-200">
+                            <div className="text-xs text-subtle">
+                                {demand.needed_by ? `Needed by ${demand.needed_by}` : 'As soon as possible'}
+                            </div>
+                            {user?.role === 'farmer' && (
+                                <a href={`tel:${demand.buyer_phone}`} className="text-sm font-bold text-brand-green hover:text-brand-dark flex items-center gap-1">
+                                    <Phone className="w-4 h-4" /> Contact
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        )}
+    </div>
+)}
+
+/* ANALYTICS IMPLEMENTATION - Replace lines 631-638 */
+{mode === 'analytics' && (
+    <div className="space-y-6">
+        {analytics ? (
+            <>
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="glass-panel p-6 border-l-4 border-brand-green">
+                        <div className="flex items-center justify-between mb-2">
+                            <Eye className="w-8 h-8 text-brand-green" />
+                            <span className="text-3xl font-black text-brand-dark">{analytics.total_views || 0}</span>
+                        </div>
+                        <h4 className="text-sm font-bold text-subtle uppercase">Total Views</h4>
+                        <p className="text-xs text-subtle mt-1">People who viewed your listings</p>
+                    </div>
+                    <div className="glass-panel p-6 border-l-4 border-blue-500">
+                        <div className="flex items-center justify-between mb-2">
+                            <Phone className="w-8 h-8 text-blue-500" />
+                            <span className="text-3xl font-black text-brand-dark">{analytics.total_contacts || 0}</span>
+                        </div>
+                        <h4 className="text-sm font-bold text-subtle uppercase">Contact Clicks</h4>
+                        <p className="text-xs text-subtle mt-1">Users who reached out to you</p>
+                    </div>
+                    <div className="glass-panel p-6 border-l-4 border-purple-500">
+                        <div className="flex items-center justify-between mb-2">
+                            <Store className="w-8 h-8 text-purple-500" />
+                            <span className="text-3xl font-black text-brand-dark">{analytics.listing_count || 0}</span>
+                        </div>
+                        <h4 className="text-sm font-bold text-subtle uppercase">Active Listings</h4>
+                        <p className="text-xs text-subtle mt-1">Currently available for sale</p>
+                    </div>
+                </div>
+
+                {/* Performance Insights */}
+                <div className="glass-panel p-8">
+                    <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center gap-2">
+                        <TrendingUp className="w-6 h-6 text-brand-green" /> Performance Insights
+                    </h3>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between py-3 border-b border-surface-200">
+                            <div>
+                                <p className="font-bold text-brand-dark">Conversion Rate</p>
+                                <p className="text-sm text-subtle">Views to contacts ratio</p>
+                            </div>
+                            <div className="text-2xl font-black text-brand-green">
+                                {analytics.total_views > 0 ? ((analytics.total_contacts / analytics.total_views) * 100).toFixed(1) : 0}%
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-surface-200">
+                            <div>
+                                <p className="font-bold text-brand-dark">Average Views per Listing</p>
+                                <p className="text-sm text-subtle">How engaging your listings are</p>
+                            </div>
+                            <div className="text-2xl font-black text-brand-dark">
+                                {analytics.listing_count > 0 ? (analytics.total_views / analytics.listing_count).toFixed(1) : 0}
+                            </div>
+                        </div>
+                        <div className="bg-brand-green/10 rounded-2xl p-6 mt-6">
+                            <h4 className="font-bold text-brand-dark mb-2 flex items-center gap-2">
+                                💡 Pro Tip
+                            </h4>
+                            <p className="text-sm text-subtle">
+                                {analytics.total_contacts === 0 
+                                    ? "Add clear photos and detailed descriptions to boost engagement!"
+                                    : analytics.total_views / analytics.listing_count < 5
+                                    ? "Try adding quality tags like 'Organic' or 'Premium' to attract more views!"
+                                    : "Great job! Your listings are performing well. Keep it up!"}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </>
+        ) : (
+            <div className="glass-panel p-12 text-center">
+                <TrendingUp className="w-16 h-16 text-brand-green mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-brand-dark mb-2">Loading Analytics...</h3>
+                <p className="text-subtle">Fetching your performance data</p>
+            </div>
+        )}
+    </div>
+)}
