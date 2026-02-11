@@ -101,6 +101,15 @@ func main() {
 	r.POST("/api/marketplace/:id/view", h.IncrementViewCount)
 	r.POST("/api/marketplace/:id/contact", h.IncrementContactCount)
 	r.GET("/api/farmers/:id/analytics", h.GetFarmerAnalytics)
+	r.GET("/api/analytics", h.GetPlatformAnalytics)
+
+	// Weather
+	r.GET("/api/weather/current", h.GetCurrentWeather)
+	r.GET("/api/weather/forecast", h.GetWeatherForecast)
+
+	// Calendar
+	r.GET("/api/calendar/events", h.GetCalendarEvents)
+	r.POST("/api/calendar/events", h.CreateCalendarEvent)
 
 	// AI Doctor
 	r.POST("/api/doctor/analyze", h.AnalyzeCrop)

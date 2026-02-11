@@ -2,14 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { TrendingUp, MapPin, Plus, DollarSign, Trash2, Star } from 'lucide-react';
+import ExportShare from '../../components/ExportShare';
+import { parseJsonResponse } from '../../lib/api';
+import { getTranslatedCropName } from '../../lib/crops';
 
 // Helper to categorize crops
 const getCategory = (cropName) => {
     const categories = {
         'Wheat': 'Grains', 'Rice': 'Grains', 'Maize': 'Grains', 'Barley': 'Grains',
         'Tomato': 'Vegetables', 'Potato': 'Vegetables', 'Carrot': 'Vegetables', 'Onion': 'Vegetables', 'Cucumber': 'Vegetables',
-        'Cotton': 'Commercial', 'Tobaco': 'Commercial',
+        'Cotton': 'Commercial', 'Tobacco': 'Commercial',
         'Apple': 'Fruits', 'Grape': 'Fruits', 'Melon': 'Fruits', 'Watermelon': 'Fruits'
     };
     return categories[cropName] || 'Others';
@@ -17,11 +21,15 @@ const getCategory = (cropName) => {
 
 // Simple Sparkline Component
 const Sparkline = ({ data, color = "#10B981" }) => {
+    const { t } = useTranslation();
     if (!data || data.length < 2) return null;
+
+    // Ensure data is sorted by date for accurate trend
+    const sortedData = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
 
     const height = 40;
     const width = 120;
-    const prices = data.map(d => d.price);
+    const prices = sortedData.map(d => d.price);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     const range = max - min || 1;
@@ -33,8 +41,11 @@ const Sparkline = ({ data, color = "#10B981" }) => {
         return `${x},${y}`;
     }).join(' ');
 
-    const trend = prices[prices.length - 1] >= prices[0] ? 'up' : 'down';
+    const latestPrice = prices[prices.length - 1];
+    const initialPrice = prices[0];
+    const trend = latestPrice >= initialPrice ? 'up' : 'down';
     const trendColor = trend === 'up' ? '#10B981' : '#EF4444';
+    const percentageChange = ((latestPrice - initialPrice) / (initialPrice || 1) * 100).toFixed(1);
 
     return (
         <div className="flex flex-col items-end">
@@ -47,22 +58,22 @@ const Sparkline = ({ data, color = "#10B981" }) => {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                 />
-                {/* End dot */}
                 <circle
                     cx={width}
-                    cy={height - ((prices[prices.length - 1] - min) / range) * height}
+                    cy={height - ((latestPrice - min) / range) * height}
                     r="3"
                     fill={trendColor}
                 />
             </svg>
             <div className={`text-xs font-bold mt-1 ${trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
-                {trend === 'up' ? '↗' : '↘'} {((prices[prices.length - 1] - prices[0]) / prices[0] * 100).toFixed(1)}% (7d)
+                {trend === 'up' ? '↗' : '↘'} {percentageChange}% (30d)
             </div>
         </div>
     );
 };
 
 export default function MarketPage() {
+    const { t } = useTranslation();
     const [prices, setPrices] = useState([]);
     const [filteredPrices, setFilteredPrices] = useState([]);
     const [crops, setCrops] = useState([]);
@@ -85,7 +96,7 @@ export default function MarketPage() {
     const fetchPrices = async () => {
         try {
             const res = await fetch('/api/prices');
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             const priceData = Array.isArray(data) ? data : [];
 
             // Parse history if it's a string
@@ -109,8 +120,8 @@ export default function MarketPage() {
 
     const fetchCrops = async () => {
         try {
-            const res = await fetch('/api/crops');
-            const data = await res.json();
+            const res = await fetch('/api/crops', { cache: 'no-store' });
+            const data = await parseJsonResponse(res);
             const cropsData = Array.isArray(data) ? data : [];
             setCrops(cropsData);
             if (cropsData.length > 0) {
@@ -170,13 +181,13 @@ export default function MarketPage() {
             setRegion('');
             setPrice('');
             setVolumeTier('retail');
-            alert("Price submitted! Thank you for contributing.");
+            alert(t('market.priceSubmitted'));
         }
     };
 
     const handleDeletePrice = async (priceId) => {
         if (!user) return;
-        if (!confirm('Are you sure you want to delete this price entry?')) return;
+        if (!confirm(t('market.deleteConfirm'))) return;
 
         try {
             const res = await fetch(`/api/prices/${priceId}?user_id=${user.id}`, {
@@ -185,12 +196,12 @@ export default function MarketPage() {
             if (res.ok) {
                 fetchPrices();
             } else {
-                const data = await res.json();
-                alert(data.error || "Failed to delete price");
+                const data = await parseJsonResponse(res);
+                alert(data.error || t('errors.somethingWrong'));
             }
         } catch (err) {
             console.error(err);
-            alert("Error deleting price");
+            alert(t('errors.networkError'));
         }
     };
 
@@ -202,9 +213,9 @@ export default function MarketPage() {
                     animate={{ opacity: 1, x: 0 }}
                 >
                     <h1 className="heading-xl text-4xl md:text-5xl mb-3 flex items-center gap-3">
-                        <TrendingUp className="w-10 h-10 text-brand-green" /> Market Trends
+                        <TrendingUp className="w-10 h-10 text-brand-green" /> {t('market.title')}
                     </h1>
-                    <p className="text-subtle text-lg">Real-time crowdsourced prices & analytics.</p>
+                    <p className="text-subtle text-lg">{t('market.subtitle')}</p>
                 </motion.div>
 
                 <div className="flex gap-4">
@@ -213,7 +224,7 @@ export default function MarketPage() {
                         className="btn-primary shadow-lg shadow-brand-green/30"
                     >
                         <Plus className="w-5 h-5" />
-                        Share Price
+                        {t('market.sharePrice')}
                     </button>
                 </div>
             </div>
@@ -227,14 +238,14 @@ export default function MarketPage() {
                             onClick={() => setSelectedCategory(cat)}
                             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${selectedCategory === cat ? 'bg-brand-dark text-white shadow-md' : 'bg-surface-100 text-subtle hover:bg-surface-200'}`}
                         >
-                            {cat}
+                            {cat === 'All' ? t('common.all') : t(`categories.${cat.toLowerCase()}`, cat)}
                         </button>
                     ))}
                 </div>
                 <div className="w-full md:w-64 relative">
                     <input
                         type="text"
-                        placeholder="Search crop or region..."
+                        placeholder={t('market.searchPlaceholder')}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="input-modern w-full pl-10"
@@ -249,22 +260,22 @@ export default function MarketPage() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="glass-panel p-8 mb-12 border-2 border-brand-green/20"
                 >
-                    <h3 className="text-xl font-bold text-brand-dark mb-4">Contribute Market Data</h3>
+                    <h3 className="text-xl font-bold text-brand-dark mb-4">{t('market.contributeData')}</h3>
                     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
                         <div className="md:col-span-1">
-                            <label className="block text-sm font-bold mb-2 text-brand-dark">Crop</label>
+                            <label className="block text-sm font-bold mb-2 text-brand-dark">{t('market.crop')}</label>
                             <select
                                 value={cropId}
                                 onChange={(e) => setCropId(e.target.value)}
                                 className="input-modern w-full"
                             >
                                 {crops.map(c => (
-                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                    <option key={c.id} value={c.id}>{getTranslatedCropName(t, c.name)}</option>
                                 ))}
                             </select>
                         </div>
                         <div className="md:col-span-1">
-                            <label className="block text-sm font-bold mb-2 text-brand-dark">Region</label>
+                            <label className="block text-sm font-bold mb-2 text-brand-dark">{t('market.region')}</label>
                             <input
                                 placeholder="e.g. Tashkent"
                                 value={region}
@@ -274,18 +285,18 @@ export default function MarketPage() {
                             />
                         </div>
                         <div className="md:col-span-1">
-                            <label className="block text-sm font-bold mb-2 text-brand-dark">Volume Tier</label>
+                            <label className="block text-sm font-bold mb-2 text-brand-dark">{t('market.volumeTier')}</label>
                             <select
                                 value={volumeTier}
                                 onChange={(e) => setVolumeTier(e.target.value)}
                                 className="input-modern w-full"
                             >
-                                <option value="retail">Retail (Small Batch)</option>
-                                <option value="wholesale">Wholesale (Bulk)</option>
+                                <option value="retail">{t('market.retail')}</option>
+                                <option value="wholesale">{t('market.wholesale')}</option>
                             </select>
                         </div>
                         <div className="md:col-span-1">
-                            <label className="block text-sm font-bold mb-2 text-brand-dark">Price ($/kg)</label>
+                            <label className="block text-sm font-bold mb-2 text-brand-dark">{t('market.pricePerKg')}</label>
                             <div className="relative">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle">$</span>
                                 <input
@@ -299,55 +310,52 @@ export default function MarketPage() {
                                 />
                             </div>
                         </div>
-                        <button className="btn-primary w-full h-[52px] flex items-center justify-center shadow-lg">Submit Report</button>
+                        <button className="btn-primary w-full h-[52px] flex items-center justify-center shadow-lg">{t('common.submit')}</button>
                     </form>
                 </motion.div>
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
-                    <div className="col-span-full py-20 text-center text-subtle animate-pulse">Loading market data...</div>
+                    <div className="col-span-full py-20 text-center text-subtle animate-pulse">{t('common.loading')}</div>
                 ) : filteredPrices.length > 0 ? (
                     filteredPrices.map((item, i) => (
                         <motion.div
                             key={i}
+                            id={`market-card-${i}`}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: i * 0.05 }}
-                            className="glass-card p-6 glass-card-hover group"
+                            className="glass-card p-6 glass-card-hover group relative overflow-hidden"
                         >
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 bg-surface-100 rounded-xl flex items-center justify-center text-xl font-bold text-brand-dark border border-surface-200">
-                                        {item.crop[0]}
+                                        {getTranslatedCropName(t, item.crop)[0] || item.crop[0]}
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h3 className="text-lg font-bold text-brand-dark">{item.crop}</h3>
+                                            <h3 className="text-lg font-bold text-brand-dark">{getTranslatedCropName(t, item.crop)}</h3>
                                         </div>
                                         <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-surface-100 text-subtle uppercase tracking-wider">
-                                            {item.category}
+                                            {t(`categories.${item.category.toLowerCase()}`, item.category)}
                                         </span>
                                     </div>
                                 </div>
                                 <div className="text-right space-y-2">
+                                    <ExportShare targetId={`market-card-${i}`} title={`${getTranslatedCropName(t, item.crop)} Market Data`} data={item} />
                                     {item.retail_price > 0 && (
                                         <div>
-                                            <div className="text-xs text-subtle uppercase tracking-wider">Retail</div>
+                                            <div className="text-xs text-subtle uppercase tracking-wider">{t('market.retail')}</div>
                                             <span className="text-xl font-black text-brand-green">${item.retail_price.toFixed(2)}</span>
                                             <span className="text-xs text-subtle">/kg</span>
                                         </div>
                                     )}
                                     {item.wholesale_price > 0 && (
                                         <div>
-                                            <div className="text-xs text-subtle uppercase tracking-wider">Wholesale</div>
+                                            <div className="text-xs text-subtle uppercase tracking-wider">{t('market.wholesale')}</div>
                                             <span className="text-xl font-black text-blue-600">${item.wholesale_price.toFixed(2)}</span>
                                             <span className="text-xs text-subtle">/kg</span>
-                                        </div>
-                                    )}
-                                    {item.retail_price > 0 && item.wholesale_price > 0 && (
-                                        <div className="text-xs font-bold text-orange-600 mt-1">
-                                            💡 {((item.retail_price - item.wholesale_price) / item.wholesale_price * 100).toFixed(0)}% margin
                                         </div>
                                     )}
                                 </div>
@@ -366,29 +374,23 @@ export default function MarketPage() {
                                             <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full transition-all ${item.dist_farmers >= 3 ? 'bg-brand-gold/20 text-brand-dark border border-brand-gold' : 'bg-green-100 text-green-700'}`}>
                                                 <div className={`w-1.5 h-1.5 rounded-full ${item.dist_farmers >= 3 ? 'bg-brand-gold animate-bounce' : 'bg-green-500 animate-pulse'}`} />
                                                 {item.dist_farmers >= 3 && <Star className="w-3 h-3 fill-brand-gold text-brand-gold" />}
-                                                {item.dist_farmers >= 3 ? 'High Confidence Price' : `Verified by ${item.dist_farmers} farmer${item.dist_farmers > 1 ? 's' : ''}`}
+                                                {item.dist_farmers >= 3 ? t('market.highConfidence') : t('market.verifiedBy', { count: item.dist_farmers })}
                                             </div>
                                         )}
                                         {item.anon_reports > 0 && item.dist_farmers === 0 && (
                                             <div className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full bg-surface-100 text-subtle border border-surface-200">
                                                 <div className="w-1.5 h-1.5 rounded-full bg-subtle" />
-                                                {item.anon_reports} Community Report{item.anon_reports > 1 ? 's' : ''}
-                                            </div>
-                                        )}
-                                        {item.dist_farmers === 0 && item.anon_reports === 0 && (
-                                            <div className="text-[10px] text-subtle italic flex items-center gap-1">
-                                                <div className="w-1 h-1 rounded-full bg-slate-200" />
-                                                Data pending verification
+                                                {item.anon_reports} {t('market.communityReports')}
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
-                                {/* Manage Individual Reports */}
+                                {/* Your Active Reports */}
                                 {user && item.history && item.history.some(h => h.user_id === user.id) && (
                                     <div className="mt-3 overflow-hidden rounded-xl border border-blue-100 bg-blue-50/30">
                                         <div className="bg-blue-50 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-blue-600 flex justify-between items-center">
-                                            <span>Your Active Reports</span>
+                                            <span>{t('market.yourReports')}</span>
                                             <span className="bg-blue-600 text-white px-1.5 py-0.5 rounded-md text-[9px]">
                                                 {item.history.filter(h => h.user_id === user.id).length}
                                             </span>
@@ -402,7 +404,7 @@ export default function MarketPage() {
                                                         <div className="flex items-center gap-2">
                                                             <div className={`w-2 h-2 rounded-full ${report.tier === 'wholesale' ? 'bg-blue-500' : 'bg-brand-green'}`} />
                                                             <span className="text-xs font-bold text-brand-dark">${report.price.toFixed(2)}</span>
-                                                            <span className="text-[10px] text-subtle capitalize">({report.tier})</span>
+                                                            <span className="text-[10px] text-subtle capitalize">({t(`market.${report.tier}`)})</span>
                                                         </div>
                                                         <div className="flex items-center gap-2">
                                                             <span className="text-[9px] text-subtle">{new Date(report.date).toLocaleDateString()}</span>
@@ -412,7 +414,6 @@ export default function MarketPage() {
                                                                     handleDeletePrice(report.id);
                                                                 }}
                                                                 className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                                                                title="Delete this report"
                                                             >
                                                                 <Trash2 className="w-3.5 h-3.5" />
                                                             </button>
@@ -427,7 +428,7 @@ export default function MarketPage() {
                                 {item.history && item.history.length > 1 ? (
                                     <Sparkline data={item.history} />
                                 ) : (
-                                    <div className="text-xs text-subtle italic">Collecting trend data...</div>
+                                    <div className="text-xs text-subtle italic">{t('market.collectingTrends')}</div>
                                 )}
                             </div>
                         </motion.div>
@@ -437,11 +438,12 @@ export default function MarketPage() {
                         <div className="w-16 h-16 bg-surface-100 rounded-full flex items-center justify-center mx-auto mb-4 text-subtle">
                             <DollarSign className="w-8 h-8" />
                         </div>
-                        <h3 className="text-lg font-bold text-brand-dark">No Data Found</h3>
-                        <p className="text-subtle">Try adjusting your filters or search query.</p>
+                        <h3 className="text-lg font-bold text-brand-dark">{t('common.noData')}</h3>
+                        <p className="text-subtle">{t('market.noDataMessage')}</p>
                     </div>
                 )}
             </div>
         </div>
     );
 }
+

@@ -1,10 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Droplets, Leaf, CheckCircle2, Circle, Save, Trash2, Sprout } from 'lucide-react';
+import { Calendar, Droplets, Leaf, CheckCircle2, Circle, Save, Trash2, Sprout, ChevronRight } from 'lucide-react';
+import ExportShare from '../../components/ExportShare';
+import { parseJsonResponse } from '../../lib/api';
+import { getTranslatedCropName } from '../../lib/crops';
 
 export default function IrrigationPage() {
+    const { t, i18n } = useTranslation();
     const [activeTab, setActiveTab] = useState('new'); // 'new' or 'saved'
     const [crop, setCrop] = useState('');
     const [crops, setCrops] = useState([]);
@@ -18,7 +23,7 @@ export default function IrrigationPage() {
     const fetchCrops = async () => {
         try {
             const res = await fetch('/api/crops', { cache: 'no-store' });
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             setCrops(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error("Failed to fetch crops", err);
@@ -44,7 +49,7 @@ export default function IrrigationPage() {
 
         try {
             const res = await fetch(`/api/irrigation/saved?user_id=${storedUser.id}`, { cache: 'no-store' });
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             setSavedSchedules(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error("Failed to fetch saved schedules:", err);
@@ -54,21 +59,19 @@ export default function IrrigationPage() {
     const fetchSchedule = async (e) => {
         e.preventDefault();
         setLoading(true);
-        console.log(`Fetching schedule for ${crop} in ${region} from ${date}`);
         try {
-            const res = await fetch(`/api/irrigation?crop=${crop}&planting_date=${date}&region=${region}`, { cache: 'no-store' });
+            const res = await fetch(`/api/irrigation?crop=${crop}&planting_date=${date}&region=${region}&lang=${i18n.language}`, { cache: 'no-store' });
             if (res.ok) {
-                const data = await res.json();
+                const data = await parseJsonResponse(res);
                 setSchedule(data);
-                console.log("Schedule generated:", data);
             } else {
-                const errorData = await res.json();
-                alert('Generation failed: ' + (errorData.error || 'Server error'));
+                const errorData = await parseJsonResponse(res);
+                alert(t('errors.somethingWrong') + ': ' + (errorData.error || t('errors.serverError')));
                 setSchedule(null);
             }
         } catch (err) {
             console.error("Fetch error:", err);
-            alert('Failed to connect to server.');
+            alert(t('errors.networkError'));
         }
         setLoading(false);
     };
@@ -76,7 +79,7 @@ export default function IrrigationPage() {
     const saveSchedule = async () => {
         const storedUser = JSON.parse(localStorage.getItem('farm_user'));
         if (!storedUser) {
-            alert('Please Log In to save schedules to your farm.');
+            alert(t('auth.loginHere'));
             return;
         }
         if (!schedule) return;
@@ -89,8 +92,6 @@ export default function IrrigationPage() {
             reminders: schedule.reminders
         };
 
-        console.log('Attempting to save schedule:', payload);
-
         setSaving(true);
         try {
             const res = await fetch('/api/irrigation/save', {
@@ -100,19 +101,17 @@ export default function IrrigationPage() {
             });
 
             if (res.ok) {
-                const data = await res.json();
-                console.log('Save successful, received ID:', data.id);
                 await fetchSavedSchedules();
                 setActiveTab('saved');
                 setSchedule(null);
-                alert('Schedule saved to My Farm!');
+                alert(t('irrigation.scheduleCreated'));
             } else {
-                const data = await res.json();
-                alert('Save failed: ' + (data.error || 'Unknown error'));
+                const data = await parseJsonResponse(res);
+                alert(t('errors.somethingWrong') + ': ' + (data.error || t('errors.serverError')));
             }
         } catch (err) {
             console.error('Save error:', err);
-            alert('Save failed. Please check your connection.');
+            alert(t('errors.networkError'));
         }
         setSaving(false);
     };
@@ -125,7 +124,7 @@ export default function IrrigationPage() {
             if (res.ok) {
                 fetchSavedSchedules();
             } else {
-                alert('Failed to update step.');
+                alert(t('errors.somethingWrong'));
             }
         } catch (err) {
             console.error('Toggle error:', err);
@@ -133,16 +132,16 @@ export default function IrrigationPage() {
     };
 
     const deleteSchedule = async (id) => {
-        if (!confirm('Are you sure you want to delete this schedule?')) return;
+        if (!confirm(t('common.confirmDelete') || 'Are you sure?')) return;
         try {
             const res = await fetch(`/api/irrigation/saved/${id}`, {
                 method: 'DELETE'
             });
             if (res.ok) {
                 fetchSavedSchedules();
-                alert('Schedule deleted.');
+                alert(t('irrigation.scheduleDeleted'));
             } else {
-                alert('Failed to delete schedule.');
+                alert(t('errors.somethingWrong'));
             }
         } catch (err) {
             console.error('Delete error:', err);
@@ -157,8 +156,8 @@ export default function IrrigationPage() {
                 className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6"
             >
                 <div>
-                    <h1 className="text-4xl heading-xl mb-4 text-brand-dark">Irrigation & Care Reminders</h1>
-                    <p className="text-subtle max-w-2xl text-lg">Manage your field schedules with tailoring for your specific region.</p>
+                    <h1 className="text-4xl heading-xl mb-4 text-brand-dark">{t('irrigation.title')}</h1>
+                    <p className="text-subtle max-w-2xl text-lg">{t('irrigation.subtitle')}</p>
                 </div>
 
                 <div className="flex bg-surface-100 p-1.5 rounded-2xl border border-surface-200">
@@ -166,13 +165,13 @@ export default function IrrigationPage() {
                         onClick={() => setActiveTab('new')}
                         className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === 'new' ? 'bg-white text-brand-green shadow-sm' : 'text-subtle hover:text-brand-dark'}`}
                     >
-                        Schedule Builder
+                        {t('irrigation.startNewCycle')}
                     </button>
                     <button
                         onClick={() => setActiveTab('saved')}
                         className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'saved' ? 'bg-white text-brand-green shadow-sm' : 'text-subtle hover:text-brand-dark'}`}
                     >
-                        My Farm
+                        {t('common.myFarm')}
                         {savedSchedules.length > 0 && (
                             <span className="bg-brand-green/10 text-brand-green text-[10px] w-5 h-5 flex items-center justify-center rounded-full">
                                 {savedSchedules.length}
@@ -195,39 +194,39 @@ export default function IrrigationPage() {
                         <div className="lg:col-span-1">
                             <form onSubmit={fetchSchedule} className="glass-panel p-8 space-y-6">
                                 <div>
-                                    <label className="block text-sm font-semibold mb-2 text-brand-dark">Select Crop</label>
+                                    <label className="block text-sm font-semibold mb-2 text-brand-dark">{t('irrigation.selectCrop')}</label>
                                     <select
                                         value={crop}
                                         onChange={(e) => setCrop(e.target.value)}
                                         className="input-modern w-full"
                                         required
                                     >
-                                        <option value="">Choose a crop...</option>
+                                        <option value="">{t('common.select')}</option>
                                         {crops.map(c => (
-                                            <option key={c.id} value={c.name}>{c.name}</option>
+                                            <option key={c.id} value={c.name}>{getTranslatedCropName(t, c.name)}</option>
                                         ))}
                                     </select>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold mb-2 text-brand-dark">Region</label>
+                                    <label className="block text-sm font-semibold mb-2 text-brand-dark">{t('irrigation.selectRegion')}</label>
                                     <select
                                         value={region}
                                         onChange={(e) => setRegion(e.target.value)}
                                         className="input-modern w-full"
                                         required
                                     >
-                                        <option value="">Select your region...</option>
-                                        <option value="Tashkent">Tashkent Region</option>
-                                        <option value="Fergana">Fergana Valley</option>
-                                        <option value="Karakalpakstan">Karakalpakstan (Hot/Arid)</option>
-                                        <option value="Samarkand">Samarkand/Bukhara</option>
-                                        <option value="Mountainous">Mountainous Areas</option>
+                                        <option value="">{t('common.select')}</option>
+                                        <option value="Tashkent">{t('regions.tashkent')}</option>
+                                        <option value="Fergana">{t('regions.fergana')}</option>
+                                        <option value="Karakalpakstan">{t('regions.karakalpakstan')}</option>
+                                        <option value="Samarkand">{t('regions.samarkand')}</option>
+                                        <option value="Mountainous">{t('regions.mountainous') || 'Tog\'li hududlar'}</option>
                                     </select>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-semibold mb-2 text-brand-dark">Planting Date</label>
+                                    <label className="block text-sm font-semibold mb-2 text-brand-dark">{t('irrigation.plantingDate')}</label>
                                     <input
                                         type="date"
                                         value={date}
@@ -242,7 +241,7 @@ export default function IrrigationPage() {
                                     disabled={loading}
                                     className="btn-primary w-full shadow-lg"
                                 >
-                                    {loading ? 'Calculating...' : 'Generate Schedule'}
+                                    {loading ? t('common.loading') : t('irrigation.generateSchedule')}
                                 </button>
                             </form>
                         </div>
@@ -257,21 +256,24 @@ export default function IrrigationPage() {
                                                 <Leaf className="text-white" />
                                             </div>
                                             <div>
-                                                <h2 className="text-2xl font-bold text-brand-dark">{schedule.crop_name} Cycle</h2>
-                                                <p className="text-sm text-subtle">Tailored for {region || 'General Region'}</p>
+                                                <h2 className="text-2xl font-bold text-brand-dark">{getTranslatedCropName(t, schedule.crop_name)}</h2>
+                                                <p className="text-sm text-subtle">{t('irrigation.stage')}: {region || t('common.generalRegion')}</p>
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={saveSchedule}
-                                            disabled={saving}
-                                            className="btn-primary bg-brand-gold hover:bg-brand-gold/90 py-2.5 px-6 gap-2"
-                                        >
-                                            <Save className="w-4 h-4" />
-                                            {saving ? 'Saving...' : 'Save to My Farm'}
-                                        </button>
+                                        <div className="flex gap-3">
+                                            <ExportShare targetId="irrigation-preview" title={`${getTranslatedCropName(t, schedule.crop_name)} ${t('irrigation.title')}`} data={schedule} />
+                                            <button
+                                                onClick={saveSchedule}
+                                                disabled={saving}
+                                                className="btn-primary bg-brand-gold hover:bg-brand-gold/90 py-2.5 px-6 gap-2"
+                                            >
+                                                <Save className="w-4 h-4" />
+                                                {saving ? t('common.saving') : t('common.save')}
+                                            </button>
+                                        </div>
                                     </div>
 
-                                    <div className="grid gap-4">
+                                    <div id="irrigation-preview" className="grid gap-4">
                                         {schedule.reminders.map((item, i) => (
                                             <div key={i} className="glass-panel p-6 flex items-center gap-6 opacity-80">
                                                 <div className="flex items-center gap-4 md:w-32">
@@ -287,10 +289,12 @@ export default function IrrigationPage() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center glass-panel border-dashed border-2 border-surface-200">
-                                    <Sprout className="text-brand-green/20 w-16 h-16 mb-4" />
-                                    <h3 className="text-xl font-bold text-brand-dark">Start a New Cycle</h3>
-                                    <p className="text-subtle max-w-xs mx-auto mt-2">Enter your crop and region to generate a scientific care timeline.</p>
+                                <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center glass-panel border-dashed border-2 border-surface-200 bg-surface-50/30">
+                                    <div className="w-20 h-20 bg-brand-green/5 rounded-full flex items-center justify-center mb-6">
+                                        <Sprout className="text-brand-green/20 w-10 h-10" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-brand-dark">{t('irrigation.startNewCycle')}</h3>
+                                    <p className="text-subtle max-w-xs mx-auto mt-2 text-sm leading-relaxed">{t('irrigation.fillFormAbove')}</p>
                                 </div>
                             )}
                         </div>
@@ -304,7 +308,7 @@ export default function IrrigationPage() {
                         className="space-y-12"
                     >
                         {savedSchedules.length > 0 ? (
-                            savedSchedules.map((s) => {
+                            savedSchedules.map((s, idx) => {
                                 const completedCount = s.steps.filter(st => st.completed_at).length;
                                 const progress = Math.round((completedCount / s.steps.length) * 100);
 
@@ -316,13 +320,13 @@ export default function IrrigationPage() {
                                                     <Sprout className="text-brand-green w-6 h-6" />
                                                 </div>
                                                 <div>
-                                                    <h2 className="text-2xl font-bold text-brand-dark font-display">{s.crop_name} - {s.region}</h2>
-                                                    <p className="text-sm text-subtle">Planted on {new Date(s.planting_date).toLocaleDateString()}</p>
+                                                    <h2 className="text-2xl font-bold text-brand-dark font-display">{getTranslatedCropName(t, s.crop_name)} - {s.region}</h2>
+                                                    <p className="text-sm text-subtle">{t('irrigation.plantingDate')}: {new Date(s.planting_date).toLocaleDateString()}</p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-6">
                                                 <div className="text-right">
-                                                    <div className="text-xs font-bold text-brand-dark uppercase tracking-widest mb-1">{progress}% Complete</div>
+                                                    <div className="text-xs font-bold text-brand-dark uppercase tracking-widest mb-1">{progress}% {t('common.complete')}</div>
                                                     <div className="w-32 h-2 bg-surface-200 rounded-full overflow-hidden">
                                                         <div
                                                             className="h-full bg-brand-green transition-all duration-500"
@@ -330,16 +334,19 @@ export default function IrrigationPage() {
                                                         />
                                                     </div>
                                                 </div>
-                                                <button
-                                                    onClick={() => deleteSchedule(s.id)}
-                                                    className="p-2 text-subtle hover:text-red-500 hover:bg-red-50 transition-all rounded-lg"
-                                                >
-                                                    <Trash2 className="w-5 h-5" />
-                                                </button>
+                                                <div className="flex gap-2">
+                                                    <ExportShare targetId={`saved-schedule-${idx}`} title={`${getTranslatedCropName(t, s.crop_name)} ${t('irrigation.title')}`} data={s} />
+                                                    <button
+                                                        onClick={() => deleteSchedule(s.id)}
+                                                        className="p-2 text-subtle hover:text-red-500 hover:bg-red-50 transition-all rounded-lg"
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div className="grid gap-4">
+                                        <div id={`saved-schedule-${idx}`} className="grid gap-4">
                                             {s.steps.map((step) => {
                                                 const isToday = new Date(step.date).toDateString() === new Date().toDateString();
                                                 const isCompleted = step.completed_at !== null;
@@ -370,7 +377,7 @@ export default function IrrigationPage() {
                                                                 <div className="text-brand-gold font-bold text-xs uppercase tracking-wider">{step.stage}</div>
                                                                 {isToday && !isCompleted && (
                                                                     <span className="bg-brand-green text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase ring-2 ring-brand-green/20">
-                                                                        Current Stage
+                                                                        {t('common.today')}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -383,7 +390,7 @@ export default function IrrigationPage() {
                                                         <div className={`text-xs font-bold uppercase transition-all px-3 py-1.5 rounded-lg ${isCompleted ? 'bg-surface-200 text-subtle' :
                                                             isToday ? 'bg-brand-green text-white shadow-md' : 'bg-brand-green/5 text-brand-green'
                                                             }`}>
-                                                            {isCompleted ? 'Done' : isToday ? 'Action Today' : 'Pending'}
+                                                            {isCompleted ? t('common.done') : isToday ? t('common.actionToday') : t('common.pending')}
                                                         </div>
                                                     </div>
                                                 );
@@ -398,13 +405,13 @@ export default function IrrigationPage() {
                                 <div className="w-20 h-20 bg-brand-green/5 rounded-full flex items-center justify-center mb-6">
                                     <Sprout className="text-brand-green/20 w-10 h-10" />
                                 </div>
-                                <h3 className="text-xl font-bold text-brand-dark">No Active Cycles</h3>
-                                <p className="text-subtle max-w-xs mx-auto mt-2">Save a generated schedule to start tracking your farm's irrigation progress.</p>
+                                <h3 className="text-xl font-bold text-brand-dark">{t('irrigation.noActiveCycles')}</h3>
+                                <p className="text-subtle max-w-xs mx-auto mt-2">{t('irrigation.noScheduleYet')}</p>
                                 <button
                                     onClick={() => setActiveTab('new')}
                                     className="mt-6 text-brand-green font-bold text-sm hover:underline"
                                 >
-                                    Build your first schedule &rarr;
+                                    {t('irrigation.startNewCycle')} &rarr;
                                 </button>
                             </div>
                         )}
@@ -418,9 +425,7 @@ export default function IrrigationPage() {
                     <Leaf className="w-6 h-6 flex-shrink-0 mt-1 text-brand-green/60" />
                     <div>
                         <p className="leading-relaxed">
-                            <strong>Disclaimer:</strong> These schedules are based on general FAO (Food and Agriculture Organization)
-                            guidelines for Uzbekistan's climate. Local soil conditions, specific varieties, and actual weather
-                            may require adjustments. Always consult with a local agronomist for critical field decisions.
+                            <strong>{t('common.disclaimer')}:</strong> {t('irrigation.disclaimerMessage')}
                         </p>
                     </div>
                 </div>

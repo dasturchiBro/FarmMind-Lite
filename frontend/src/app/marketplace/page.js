@@ -1,14 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Store, Phone, MapPin, X, Plus, Heart, Star, Tag as TagIcon, Eye, Package, TrendingUp, Trash2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import ExportShare from '../../components/ExportShare';
+import { parseJsonResponse } from '../../lib/api';
+import { getTranslatedCropName } from '../../lib/crops';
 
 const Map = dynamic(() => import('../../components/Map'), { ssr: false });
 
 export default function MarketplacePage() {
+    const { t } = useTranslation();
     const router = useRouter();
     const [listings, setListings] = useState([]);
     const [crops, setCrops] = useState([]);
@@ -88,7 +93,7 @@ export default function MarketplacePage() {
     const fetchCrops = async () => {
         try {
             const res = await fetch('/api/crops');
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             const cropsData = Array.isArray(data) ? data : [];
             setCrops(cropsData);
             if (cropsData.length > 0) {
@@ -110,7 +115,7 @@ export default function MarketplacePage() {
             if (filters.max_price) params.append('max_price', filters.max_price);
 
             const res = await fetch(`/api/marketplace?${params.toString()}`);
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             setListings(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error(err);
@@ -123,7 +128,7 @@ export default function MarketplacePage() {
     const fetchSavedListings = async (userId) => {
         try {
             const res = await fetch(`/api/watchlist?user_id=${userId}`, { cache: 'no-store' });
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             const ids = new Set(Array.isArray(data) ? data.map(l => l.id) : []);
             setSavedListings(ids);
         } catch (err) {
@@ -135,7 +140,7 @@ export default function MarketplacePage() {
     const fetchWatchlistData = async (userId) => {
         try {
             const res = await fetch(`/api/watchlist?user_id=${userId}`, { cache: 'no-store' });
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             setWatchlistData(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error(err);
@@ -146,7 +151,7 @@ export default function MarketplacePage() {
     const fetchDemands = async () => {
         try {
             const res = await fetch('/api/demands');
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             setDemandRequests(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error(err);
@@ -157,7 +162,7 @@ export default function MarketplacePage() {
     const fetchAnalytics = async (farmerId) => {
         try {
             const res = await fetch(`/api/farmers/${farmerId}/analytics`, { cache: 'no-store' });
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             setAnalytics(data);
         } catch (err) {
             console.error(err);
@@ -168,7 +173,7 @@ export default function MarketplacePage() {
     const fetchReviews = async (farmerId) => {
         try {
             const res = await fetch(`/api/farmers/${farmerId}/reviews`, { cache: 'no-store' });
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
             setReviews(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error(err);
@@ -177,7 +182,7 @@ export default function MarketplacePage() {
     };
 
     const toggleSave = async (listingId) => {
-        if (!user) return alert("Please log in first");
+        if (!user) return alert(t('common.loginFirst'));
         const isSaved = savedListings.has(listingId);
 
         try {
@@ -203,7 +208,7 @@ export default function MarketplacePage() {
 
     const handleCreateListing = async (e) => {
         e.preventDefault();
-        if (!user) return alert("Please log in first");
+        if (!user) return alert(t('common.loginFirst'));
 
         try {
             const data = new FormData();
@@ -235,20 +240,20 @@ export default function MarketplacePage() {
                 setPreviewImage(null);
                 setPreviewImages([]);
                 setLocationInput(null);
-                alert("Listing successfully created!");
+                alert(t('marketplace.listingCreated'));
             } else {
-                const errorData = await res.json();
-                alert("Failed to create listing: " + (errorData.error || "Unknown error"));
+                const errorData = await parseJsonResponse(res);
+                alert(t('errors.somethingWrong') + ": " + (errorData.error || ""));
             }
         } catch (err) {
             console.error(err);
-            alert("Error connecting to server");
+            alert(t('errors.networkError'));
         }
     };
 
     const handleDelete = async (e, id) => {
         e.stopPropagation();
-        if (confirm('Are you sure you want to delete this listing?')) {
+        if (confirm(t('common.confirmDelete'))) {
             try {
                 await fetch(`/api/marketplace/${id}`, { method: 'DELETE' });
                 fetchListings();
@@ -276,23 +281,23 @@ export default function MarketplacePage() {
             });
 
             if (res.ok) {
-                alert('Review submitted successfully!');
+                alert(t('marketplace.reviewSubmitted'));
                 setShowReviewForm(false);
                 setReviewFormData({ rating: 5, comment: '' });
                 fetchReviews(selectedListing.farmer_id);
                 fetchListings(); // Refresh to update ratings
             } else {
-                alert('Failed to submit review');
+                alert(t('errors.somethingWrong'));
             }
         } catch (err) {
             console.error(err);
-            alert('Error submitting review');
+            alert(t('errors.networkError'));
         }
     };
 
     const handleCreateDemand = async (e) => {
         e.preventDefault();
-        if (!user) return alert("Please log in first");
+        if (!user) return alert(t('common.loginFirst'));
 
         try {
             const res = await fetch('/api/demands', {
@@ -310,7 +315,7 @@ export default function MarketplacePage() {
             });
 
             if (res.ok) {
-                alert('Demand request posted successfully!');
+                alert(t('marketplace.demandPosted'));
                 setShowDemandForm(false);
                 setDemandFormData({
                     crop_type_id: crops[0]?.id || '',
@@ -322,41 +327,34 @@ export default function MarketplacePage() {
                 });
                 fetchDemands();
             } else {
-                const errorData = await res.json();
-                alert('Failed to create demand request: ' + (errorData.error || 'Unknown error'));
+                const errorData = await parseJsonResponse(res);
+                alert(t('errors.somethingWrong') + ": " + (errorData.error || ""));
             }
         } catch (err) {
             console.error(err);
-            alert('Error creating demand: ' + err.message);
+            alert(t('errors.networkError'));
         }
     };
 
     const handleDeleteDemand = async (demandId) => {
-        if (!user) return alert("Please log in first");
-        if (!demandId) return alert("Invalid request ID");
+        if (!user) return alert(t('common.loginFirst'));
+        if (!demandId) return alert(t('errors.somethingWrong'));
 
-        if (confirm('Are you sure you want to delete this request?')) {
+        if (confirm(t('common.confirmDelete'))) {
             try {
                 const res = await fetch(`/api/demands/${demandId}?buyer_id=${user.id}`, {
                     method: 'DELETE'
                 });
 
                 if (res.ok) {
-                    alert('Request deleted successfully!');
+                    alert(t('marketplace.requestDeleted'));
                     fetchDemands();
                 } else {
-                    const text = await res.text();
-                    try {
-                        const errorData = JSON.parse(text);
-                        alert('Failed to delete request: ' + (errorData.error || 'Unknown error'));
-                    } catch (e) {
-                        console.error('Non-JSON error response:', text);
-                        alert(`Failed to delete request (Status ${res.status}). See console for details.`);
-                    }
+                    alert(t('errors.somethingWrong'));
                 }
             } catch (err) {
                 console.error(err);
-                alert('Error deleting request: ' + err.message);
+                alert(t('errors.networkError'));
             }
         }
     };
@@ -383,12 +381,6 @@ export default function MarketplacePage() {
         }
     };
 
-    const handleContactClick = async (listingId) => {
-        if (listingId) {
-            await fetch(`/api/marketplace/${listingId}/contact`, { method: 'POST' });
-        }
-    };
-
     const renderStars = (rating) => {
         const stars = [];
         for (let i = 0; i < 5; i++) {
@@ -405,16 +397,19 @@ export default function MarketplacePage() {
             <div className="flex flex-col md:flex-row justify-between items-end gap-4">
                 <div>
                     <h1 className="heading-xl text-4xl md:text-5xl mb-2 flex items-center gap-3">
-                        <Store className="w-10 h-10 text-brand-green" /> Marketplace
+                        <Store className="w-10 h-10 text-brand-green" /> {t('marketplace.title')}
                     </h1>
-                    <p className="text-subtle text-lg">Connect directly with buyers. Transparent & Fair.</p>
+                    <p className="text-subtle text-lg">{t('marketplace.subtitle')}</p>
                 </div>
                 {user?.role === 'farmer' && (
                     <button
-                        onClick={() => setShowForm(!showForm)}
+                        onClick={() => {
+                            setShowForm(!showForm);
+                            if (mode !== 'marketplace') setMode('marketplace');
+                        }}
                         className="btn-primary shadow-lg shadow-brand-green/30"
                     >
-                        {showForm ? <><X className="w-5 h-5" /> Cancel</> : <><Plus className="w-5 h-5" /> New Listing</>}
+                        {showForm && mode === 'marketplace' ? <><X className="w-5 h-5" /> {t('common.cancel')}</> : <><Plus className="w-5 h-5" /> {t('marketplace.newListing')}</>}
                     </button>
                 )}
             </div>
@@ -422,17 +417,17 @@ export default function MarketplacePage() {
             {/* Tab Navigation */}
             <div className="glass-panel p-2 flex gap-2 overflow-x-auto scrollbar-hide">
                 <button onClick={() => setMode('marketplace')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${mode === 'marketplace' ? 'bg-brand-dark text-white shadow-md' : 'bg-surface-100 text-subtle hover:bg-surface-200'}`}>
-                    <Store className="w-4 h-4 inline mr-2" />Marketplace
+                    <Store className="w-4 h-4 inline mr-2" />{t('common.marketplace')}
                 </button>
                 <button onClick={() => setMode('watchlist')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${mode === 'watchlist' ? 'bg-brand-dark text-white shadow-md' : 'bg-surface-100 text-subtle hover:bg-surface-200'}`}>
-                    <Heart className="w-4 h-4 inline mr-2" />Watchlist
+                    <Heart className="w-4 h-4 inline mr-2" />{t('marketplace.watchlist')}
                 </button>
                 <button onClick={() => setMode('demands')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${mode === 'demands' ? 'bg-brand-dark text-white shadow-md' : 'bg-surface-100 text-subtle hover:bg-surface-200'}`}>
-                    <Package className="w-4 h-4 inline mr-2" />Buyer Requests
+                    <Package className="w-4 h-4 inline mr-2" />{t('marketplace.buyerRequests')}
                 </button>
                 {user?.role === 'farmer' && (
                     <button onClick={() => setMode('analytics')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${mode === 'analytics' ? 'bg-brand-dark text-white shadow-md' : 'bg-surface-100 text-subtle hover:bg-surface-200'}`}>
-                        <TrendingUp className="w-4 h-4 inline mr-2" />Analytics
+                        <TrendingUp className="w-4 h-4 inline mr-2" />{t('common.analytics')}
                     </button>
                 )}
             </div>
@@ -442,11 +437,11 @@ export default function MarketplacePage() {
                 <div className="glass-panel p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
                     <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
                         <button onClick={() => setFilters({ ...filters, crop_type_id: 'All' })} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${filters.crop_type_id === 'All' ? 'bg-brand-dark text-white shadow-md' : 'bg-surface-100 text-subtle hover:bg-surface-200'}`}>
-                            All
+                            {t('common.all')}
                         </button>
                         {crops.map((c) => (
                             <button key={c.id} onClick={() => setFilters({ ...filters, crop_type_id: c.id.toString() })} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${filters.crop_type_id === c.id.toString() ? 'bg-brand-dark text-white shadow-md' : 'bg-surface-100 text-subtle hover:bg-surface-200'}`}>
-                                {c.name}
+                                {getTranslatedCropName(t, c.name)}
                             </button>
                         ))}
                     </div>
@@ -459,47 +454,47 @@ export default function MarketplacePage() {
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                         <div className="glass-panel p-8 mb-8 border-2 border-brand-green/20">
                             <h2 className="text-2xl font-bold mb-6 text-brand-dark flex items-center gap-2">
-                                <Plus className="w-6 h-6 text-brand-green" /> Create New Listing
+                                <Plus className="w-6 h-6 text-brand-green" /> {t('marketplace.createNewListing')}
                             </h2>
                             <form onSubmit={handleCreateListing} className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <div className="space-y-6">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-bold text-brand-dark mb-2">Crop Type</label>
+                                            <label className="block text-sm font-bold text-brand-dark mb-2">{t('market.crop')}</label>
                                             <select value={formData.crop_type_id} onChange={e => setFormData({ ...formData, crop_type_id: e.target.value })} className="input-modern w-full">
-                                                {crops.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                                ))}
+{crops.map(c => (
+                                                <option key={c.id} value={c.id}>{getTranslatedCropName(t, c.name)}</option>
+                                            ))}
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-brand-dark mb-2">Quantity (kg)</label>
+                                            <label className="block text-sm font-bold text-brand-dark mb-2">{t('marketplace.quantity')} (kg)</label>
                                             <input type="number" placeholder="500" value={formData.quantity_kg} onChange={e => setFormData({ ...formData, quantity_kg: e.target.value })} className="input-modern w-full" required />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-bold text-brand-dark mb-2">Price per kg ($)</label>
+                                            <label className="block text-sm font-bold text-brand-dark mb-2">{t('marketplace.pricePerKg')} ($)</label>
                                             <input type="number" placeholder="0.50" step="0.01" value={formData.price_per_kg} onChange={e => setFormData({ ...formData, price_per_kg: e.target.value })} className="input-modern w-full" required />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-bold text-brand-dark mb-2">Harvest Date</label>
+                                            <label className="block text-sm font-bold text-brand-dark mb-2">{t('marketplace.harvestDate')}</label>
                                             <input type="date" value={formData.harvest_ready_date} onChange={e => setFormData({ ...formData, harvest_ready_date: e.target.value })} className="input-modern w-full" />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-brand-dark mb-2">Tags (comma-separated)</label>
+                                        <label className="block text-sm font-bold text-brand-dark mb-2">{t('marketplace.tags')}</label>
                                         <input type="text" placeholder="Organic, Premium, Fresh" value={formData.tags} onChange={e => setFormData({ ...formData, tags: e.target.value })} className="input-modern w-full" />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-brand-dark mb-2">Description</label>
-                                        <textarea placeholder="Describe quality, variety, etc." value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="input-modern w-full h-32 resize-none" />
+                                        <label className="block text-sm font-bold text-brand-dark mb-2">{t('common.description')}</label>
+                                        <textarea placeholder={t('marketplace.descriptionPlaceholder')} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="input-modern w-full h-32 resize-none" />
                                     </div>
                                 </div>
 
                                 <div className="space-y-6">
                                     <div>
-                                        <label className="block text-sm font-bold text-brand-dark mb-2">Main Image</label>
+                                        <label className="block text-sm font-bold text-brand-dark mb-2">{t('marketplace.mainImage')}</label>
                                         <div className="flex items-center justify-center w-full">
                                             <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-surface-200 rounded-2xl cursor-pointer hover:bg-surface-50 transition-colors overflow-hidden relative">
                                                 {previewImage ? (
@@ -507,7 +502,7 @@ export default function MarketplacePage() {
                                                 ) : (
                                                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                                         <Plus className="w-8 h-8 text-subtle mb-2" />
-                                                        <p className="text-xs text-subtle">Click to upload</p>
+                                                        <p className="text-xs text-subtle">{t('common.upload')}</p>
                                                     </div>
                                                 )}
                                                 <input type="file" className="hidden" onChange={handleImageChange} accept="image/*" />
@@ -516,7 +511,7 @@ export default function MarketplacePage() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-bold text-brand-dark mb-2">Additional Images (up to 5)</label>
+                                        <label className="block text-sm font-bold text-brand-dark mb-2">{t('marketplace.additionalImages')}</label>
                                         <input type="file" multiple accept="image/*" onChange={handleMultipleImageChange} className="input-modern w-full text-sm" />
                                         {previewImages.length > 0 && (
                                             <div className="grid grid-cols-5 gap-2 mt-2">
@@ -528,14 +523,14 @@ export default function MarketplacePage() {
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-bold text-brand-dark mb-2">Pickup Location <span className="text-subtle font-normal">(Click on map)</span></label>
+                                        <label className="block text-sm font-bold text-brand-dark mb-2">{t('marketplace.pickupLocation')}</label>
                                         <div className="h-32 w-full rounded-2xl overflow-hidden border border-surface-200 relative z-0">
                                             <Map position={locationInput} setPosition={setLocationInput} />
                                         </div>
                                     </div>
 
                                     <button type="submit" className="btn-primary w-full py-4 text-lg shadow-xl shadow-brand-green/20">
-                                        Publish Listing
+                                        {t('marketplace.publishListing')}
                                     </button>
                                 </div>
                             </form>
@@ -552,18 +547,18 @@ export default function MarketplacePage() {
                             <div className="w-24 h-24 bg-surface-100 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <Store className="w-12 h-12 text-subtle" />
                             </div>
-                            <h3 className="text-xl font-bold text-brand-dark">No Listings Found</h3>
-                            <p className="text-subtle mt-2">Try adjusting your filters or be the first to sell!</p>
+                            <h3 className="text-xl font-bold text-brand-dark">{t('common.noData')}</h3>
+                            <p className="text-subtle mt-2">{t('marketplace.noListingsFound')}</p>
                         </div>
                     ) : (
-                        listings.map(listing => (
+                        listings.map((listing, i) => (
                             <motion.div
                                 key={listing.id}
+                                id={`listing-card-${i}`}
                                 onClick={() => openListingDetail(listing)}
                                 className="glass-panel overflow-hidden group hover:shadow-2xl hover:shadow-brand-dark/5 transition-all duration-300 cursor-pointer relative"
                                 whileHover={{ y: -5 }}
                             >
-                                {/* Save Button */}
                                 <button
                                     onClick={(e) => { e.stopPropagation(); toggleSave(listing.id); }}
                                     className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-md p-2 rounded-full hover:bg-white transition-all"
@@ -571,12 +566,11 @@ export default function MarketplacePage() {
                                     <Heart className={`w-5 h-5 ${savedListings.has(listing.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
                                 </button>
 
-                                {/* Image Section */}
                                 <div className="h-48 w-full bg-surface-100 relative overflow-hidden">
                                     {(listing.images && listing.images[0]) || listing.image_url ? (
                                         <img
                                             src={listing.images?.[0] || listing.image_url}
-                                            alt={listing.crop_name}
+                                            alt={getTranslatedCropName(t, listing.crop_name)}
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         />
                                     ) : (
@@ -594,15 +588,13 @@ export default function MarketplacePage() {
                                     )}
                                 </div>
 
-                                {/* Content */}
                                 <div className="p-6">
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
-                                            <h3 className="text-xl font-bold text-brand-dark">{listing.crop_name}</h3>
+                                            <h3 className="text-xl font-bold text-brand-dark">{getTranslatedCropName(t, listing.crop_name)}</h3>
                                             <div className="text-sm text-subtle flex items-center gap-1 mt-1">
                                                 <span className="font-medium text-brand-green">{listing.farmer_name}</span>
                                             </div>
-                                            {/* Ratings */}
                                             {listing.review_count > 0 && (
                                                 <div className="flex items-center gap-1 mt-1">
                                                     {renderStars(listing.average_rating)}
@@ -611,14 +603,14 @@ export default function MarketplacePage() {
                                             )}
                                         </div>
                                         <div className="text-right">
+                                            <ExportShare targetId={`listing-card-${i}`} title={`${getTranslatedCropName(t, listing.crop_name)} - ${listing.farmer_name}`} data={listing} />
                                             <div className="text-2xl font-black text-brand-dark">
                                                 ${listing.price_per_kg}
                                             </div>
-                                            <div className="text-xs text-subtle font-medium">per kg</div>
+                                            <div className="text-xs text-subtle font-medium">{t('marketplace.perKg')}</div>
                                         </div>
                                     </div>
 
-                                    {/* Tags */}
                                     {listing.tags && listing.tags.length > 0 && (
                                         <div className="flex gap-1 flex-wrap mb-3">
                                             {listing.tags.slice(0, 3).map((tag, i) => (
@@ -631,11 +623,11 @@ export default function MarketplacePage() {
 
                                     <div className="grid grid-cols-2 gap-3">
                                         <div className="bg-surface-50 p-2 rounded-lg text-center border border-surface-100">
-                                            <div className="text-xs text-subtle font-bold uppercase">Harvest</div>
-                                            <div className="text-sm font-semibold text-brand-dark truncate">{listing.harvest_ready_date || 'Ready Now'}</div>
+                                            <div className="text-xs text-subtle font-bold uppercase">{t('marketplace.harvestDate')}</div>
+                                            <div className="text-sm font-semibold text-brand-dark truncate">{listing.harvest_ready_date || t('marketplace.readyNow')}</div>
                                         </div>
                                         <div className="bg-surface-50 p-2 rounded-lg text-center border border-surface-100">
-                                            <div className="text-xs text-subtle font-bold uppercase">Stock</div>
+                                            <div className="text-xs text-subtle font-bold uppercase">{t('marketplace.stock')}</div>
                                             <div className="text-sm font-semibold text-brand-dark">{listing.quantity_kg} kg</div>
                                         </div>
                                     </div>
@@ -646,14 +638,14 @@ export default function MarketplacePage() {
                 </div>
             )}
 
-            {/* Watchlist View */}
+            {/* Sub-views */}
             {mode === 'watchlist' && (
                 <div>
                     {watchlistData.length === 0 ? (
                         <div className="glass-panel p-12 text-center">
                             <Heart className="w-16 h-16 text-brand-green mx-auto mb-4" />
-                            <h3 className="text-2xl font-bold text-brand-dark mb-2">Your Watchlist is Empty</h3>
-                            <p className="text-subtle">Save listings you're interested in to track them here!</p>
+                            <h3 className="text-2xl font-bold text-brand-dark mb-2">{t('marketplace.watchlistEmpty')}</h3>
+                            <p className="text-subtle">{t('marketplace.watchlistSubtitle')}</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -673,7 +665,7 @@ export default function MarketplacePage() {
 
                                     <div className="h-48 w-full bg-surface-100 relative overflow-hidden">
                                         {listing.image_url ? (
-                                            <img src={listing.image_url} alt={listing.crop_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                            <img src={listing.image_url} alt={getTranslatedCropName(t, listing.crop_name)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                         ) : (
                                             <div className="flex items-center justify-center h-full text-subtle bg-surface-200">
                                                 <Store className="w-10 h-10 opacity-30" />
@@ -687,7 +679,7 @@ export default function MarketplacePage() {
                                     <div className="p-6">
                                         <div className="flex justify-between items-start mb-3">
                                             <div>
-                                                <h3 className="text-xl font-bold text-brand-dark">{listing.crop_name}</h3>
+                                                <h3 className="text-xl font-bold text-brand-dark">{getTranslatedCropName(t, listing.crop_name)}</h3>
                                                 <div className="text-sm text-subtle flex items-center gap-1 mt-1">
                                                     <span className="font-medium text-brand-green">{listing.farmer_name}</span>
                                                 </div>
@@ -713,202 +705,207 @@ export default function MarketplacePage() {
                         </div>
                     )}
                 </div>
-            )}
+            )
+            }
 
             {/* Buyer Demands View */}
-            {mode === 'demands' && (
-                <div className="space-y-8">
-                    {/* Create Demand Button for Buyers */}
-                    {user?.role !== 'farmer' && (
-                        <div className="flex justify-end">
-                            <button onClick={() => setShowDemandForm(!showDemandForm)} className="btn-primary shadow-lg shadow-brand-green/30">
-                                {showDemandForm ? <><X className="w-5 h-5" /> Cancel</> : <><Plus className="w-5 h-5" /> Post Request</>}
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Demand Form */}
-                    <AnimatePresence>
-                        {showDemandForm && (
-                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                                <div className="glass-panel p-8 border-2 border-brand-green/20">
-                                    <h2 className="text-2xl font-bold mb-6 text-brand-dark flex items-center gap-2">
-                                        <Package className="w-6 h-6 text-brand-green" /> Post Buyer Request
-                                    </h2>
-                                    <form onSubmit={handleCreateDemand} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-sm font-bold text-brand-dark mb-2">Crop Type</label>
-                                            <select value={demandFormData.crop_type_id} onChange={e => setDemandFormData({ ...demandFormData, crop_type_id: e.target.value })} className="input-modern w-full" required>
-                                                <option value="">Select crop</option>
-                                                {crops.map(c => (
-                                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-brand-dark mb-2">Quantity Needed (kg)</label>
-                                            <input type="number" placeholder="500" value={demandFormData.quantity_kg} onChange={e => setDemandFormData({ ...demandFormData, quantity_kg: e.target.value })} className="input-modern w-full" required />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-brand-dark mb-2">Max Price per kg ($)</label>
-                                            <input type="number" placeholder="0.50" step="0.01" value={demandFormData.max_price_per_kg} onChange={e => setDemandFormData({ ...demandFormData, max_price_per_kg: e.target.value })} className="input-modern w-full" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-brand-dark mb-2">Needed By</label>
-                                            <input type="date" value={demandFormData.needed_by} onChange={e => setDemandFormData({ ...demandFormData, needed_by: e.target.value })} className="input-modern w-full" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-brand-dark mb-2">Region</label>
-                                            <input type="text" placeholder="Tashkent" value={demandFormData.region} onChange={e => setDemandFormData({ ...demandFormData, region: e.target.value })} className="input-modern w-full" />
-                                        </div>
-                                        <div className="md:col-span-2">
-                                            <label className="block text-sm font-bold text-brand-dark mb-2">Description</label>
-                                            <textarea placeholder="Describe your requirements..." value={demandFormData.description} onChange={e => setDemandFormData({ ...demandFormData, description: e.target.value })} className="input-modern w-full h-24 resize-none" />
-                                        </div>
-                                        <div className="md:col-span-2">
-                                            <button type="submit" className="btn-primary w-full py-3">Post Request</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </motion.div>
+            {
+                mode === 'demands' && (
+                    <div className="space-y-8">
+                        {/* Create Demand Button for Buyers */}
+                        {user?.role !== 'farmer' && (
+                            <div className="flex justify-end">
+                                <button onClick={() => setShowDemandForm(!showDemandForm)} className="btn-primary shadow-lg shadow-brand-green/30">
+                                    {showDemandForm ? <><X className="w-5 h-5" /> {t('common.cancel')}</> : <><Plus className="w-5 h-5" /> {t('marketplace.postRequest')}</>}
+                                </button>
+                            </div>
                         )}
-                    </AnimatePresence>
 
-                    {/* Demands List */}
-                    {demandRequests.length === 0 ? (
-                        <div className="glass-panel p-12 text-center">
-                            <Package className="w-16 h-16 text-brand-green mx-auto mb-4" />
-                            <h3 className="text-2xl font-bold text-brand-dark mb-2">No Buyer Requests Yet</h3>
-                            <p className="text-subtle">Buyers can post what they need, and farmers can respond directly!</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {demandRequests.map(demand => (
-                                <div key={demand.id} className="glass-panel p-6 hover:shadow-lg transition-shadow relative">
+                        {/* Demand Form */}
+                        <AnimatePresence>
+                            {showDemandForm && (
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                                    <div className="glass-panel p-8 border-2 border-brand-green/20">
+                                        <h2 className="text-2xl font-bold mb-6 text-brand-dark flex items-center gap-2">
+                                            <Package className="w-6 h-6 text-brand-green" /> {t('marketplace.postBuyerRequest')}
+                                        </h2>
+                                        <form onSubmit={handleCreateDemand} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div>
+                                                <label className="block text-sm font-bold text-brand-dark mb-2">{t('market.crop')}</label>
+                                                <select value={demandFormData.crop_type_id} onChange={e => setDemandFormData({ ...demandFormData, crop_type_id: e.target.value })} className="input-modern w-full" required>
+                                                    <option value="">{t('marketplace.selectCrop')}</option>
+{crops.map(c => (
+                                                <option key={c.id} value={c.id}>{getTranslatedCropName(t, c.name)}</option>
+                                            ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-brand-dark mb-2">{t('marketplace.quantity')} (kg)</label>
+                                                <input type="number" placeholder="500" value={demandFormData.quantity_kg} onChange={e => setDemandFormData({ ...demandFormData, quantity_kg: e.target.value })} className="input-modern w-full" required />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-brand-dark mb-2">{t('marketplace.maxPricePerKg')} ($)</label>
+                                                <input type="number" placeholder="0.50" step="0.01" value={demandFormData.max_price_per_kg} onChange={e => setDemandFormData({ ...demandFormData, max_price_per_kg: e.target.value })} className="input-modern w-full" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-brand-dark mb-2">{t('marketplace.neededBy')}</label>
+                                                <input type="date" value={demandFormData.needed_by} onChange={e => setDemandFormData({ ...demandFormData, needed_by: e.target.value })} className="input-modern w-full" />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-brand-dark mb-2">{t('common.region')}</label>
+                                                <input type="text" placeholder="Tashkent" value={demandFormData.region} onChange={e => setDemandFormData({ ...demandFormData, region: e.target.value })} className="input-modern w-full" />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <label className="block text-sm font-bold text-brand-dark mb-2">{t('common.description')}</label>
+                                                <textarea placeholder={t('marketplace.descriptionPlaceholder')} value={demandFormData.description} onChange={e => setDemandFormData({ ...demandFormData, description: e.target.value })} className="input-modern w-full h-24 resize-none" />
+                                            </div>
+                                            <div className="md:col-span-2">
+                                                <button type="submit" className="btn-primary w-full py-3">{t('marketplace.postRequest')}</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Demands List */}
+                        {demandRequests.length === 0 ? (
+                            <div className="glass-panel p-12 text-center">
+                                <Package className="w-16 h-16 text-brand-green mx-auto mb-4" />
+                                <h3 className="text-2xl font-bold text-brand-dark mb-2">{t('marketplace.noDemandsYet')}</h3>
+                                <p className="text-subtle">{t('marketplace.demandsSubtitle')}</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {demandRequests.map(demand => (
+                                    <div key={demand.id} className="glass-panel p-6 hover:shadow-lg transition-shadow relative">
 
 
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div>
-                                            <h3 className="text-xl font-bold text-brand-dark">{demand.crop_name}</h3>
-                                            <p className="text-sm text-subtle">{demand.buyer_name} • {demand.region}</p>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h3 className="text-xl font-bold text-brand-dark">{getTranslatedCropName(t, demand.crop_name)}</h3>
+                                                <p className="text-sm text-subtle">{demand.buyer_name} • {demand.region}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-lg font-bold text-brand-green">{demand.quantity_kg} kg</div>
+                                                {demand.max_price_per_kg && (
+                                                    <div className="text-xs text-subtle">Max ${demand.max_price_per_kg}/kg</div>
+                                                )}
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <div className="text-lg font-bold text-brand-green">{demand.quantity_kg} kg</div>
-                                            {demand.max_price_per_kg && (
-                                                <div className="text-xs text-subtle">Max ${demand.max_price_per_kg}/kg</div>
+                                        {demand.description && (
+                                            <p className="text-sm text-subtle mb-4">{demand.description}</p>
+                                        )}
+                                        <div className="flex items-center justify-between pt-3 border-t border-surface-200">
+                                            <div className="text-xs text-subtle">
+                                                {demand.needed_by ? `${t('marketplace.neededBy')} ${demand.needed_by}` : t('marketplace.asSoonAsPossible')}
+                                            </div>
+                                            {user?.role === 'farmer' && (
+                                                <a href={`tel:${demand.buyer_phone}`} className="text-sm font-bold text-brand-green hover:text-brand-dark flex items-center gap-1">
+                                                    <Phone className="w-4 h-4" /> {t('common.contact')}
+                                                </a>
+                                            )}
+                                            {/* Delete button for own requests */}
+                                            {user && user.id === demand.buyer_id && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDeleteDemand(demand.id); }}
+                                                    className="text-sm font-bold text-red-500 hover:text-red-700 flex items-center gap-1 bg-red-50 px-3 py-1.5 rounded-lg transition-colors border border-red-100"
+                                                >
+                                                    <Trash2 className="w-4 h-4" /> {t('marketplace.deleteRequest')}
+                                                </button>
                                             )}
                                         </div>
                                     </div>
-                                    {demand.description && (
-                                        <p className="text-sm text-subtle mb-4">{demand.description}</p>
-                                    )}
-                                    <div className="flex items-center justify-between pt-3 border-t border-surface-200">
-                                        <div className="text-xs text-subtle">
-                                            {demand.needed_by ? `Needed by ${demand.needed_by}` : 'As soon as possible'}
-                                        </div>
-                                        {user?.role === 'farmer' && (
-                                            <a href={`tel:${demand.buyer_phone}`} className="text-sm font-bold text-brand-green hover:text-brand-dark flex items-center gap-1">
-                                                <Phone className="w-4 h-4" /> Contact
-                                            </a>
-                                        )}
-                                        {/* Delete button for own requests */}
-                                        {user && user.id === demand.buyer_id && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteDemand(demand.id); }}
-                                                className="text-sm font-bold text-red-500 hover:text-red-700 flex items-center gap-1 bg-red-50 px-3 py-1.5 rounded-lg transition-colors border border-red-100"
-                                            >
-                                                <Trash2 className="w-4 h-4" /> Delete Request
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            )}
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )
+            }
 
             {/* Analytics View */}
-            {mode === 'analytics' && (
-                <div className="space-y-6">
-                    {analytics ? (
-                        <>
-                            {/* Stats Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="glass-panel p-6 border-l-4 border-brand-green">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <Eye className="w-8 h-8 text-brand-green" />
-                                        <span className="text-3xl font-black text-brand-dark">{analytics.total_views || 0}</span>
+            {
+                mode === 'analytics' && (
+                    <div className="space-y-6">
+                        {analytics ? (
+                            <>
+                                {/* Stats Cards */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="glass-panel p-6 border-l-4 border-brand-green">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <Eye className="w-8 h-8 text-brand-green" />
+                                            <span className="text-3xl font-black text-brand-dark">{analytics.total_views || 0}</span>
+                                        </div>
+                                        <h4 className="text-sm font-bold text-subtle uppercase">{t('marketplace.totalViews')}</h4>
+                                        <p className="text-xs text-subtle mt-1">{t('marketplace.viewsSubtitle')}</p>
                                     </div>
-                                    <h4 className="text-sm font-bold text-subtle uppercase">Total Views</h4>
-                                    <p className="text-xs text-subtle mt-1">People who viewed your listings</p>
-                                </div>
-                                <div className="glass-panel p-6 border-l-4 border-blue-500">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <Phone className="w-8 h-8 text-blue-500" />
-                                        <span className="text-3xl font-black text-brand-dark">{analytics.total_contacts || 0}</span>
+                                    <div className="glass-panel p-6 border-l-4 border-blue-500">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <Phone className="w-8 h-8 text-blue-500" />
+                                            <span className="text-3xl font-black text-brand-dark">{analytics.total_contacts || 0}</span>
+                                        </div>
+                                        <h4 className="text-sm font-bold text-subtle uppercase">{t('marketplace.contactClicks')}</h4>
+                                        <p className="text-xs text-subtle mt-1">{t('marketplace.contactsSubtitle')}</p>
                                     </div>
-                                    <h4 className="text-sm font-bold text-subtle uppercase">Contact Clicks</h4>
-                                    <p className="text-xs text-subtle mt-1">Users who reached out to you</p>
-                                </div>
-                                <div className="glass-panel p-6 border-l-4 border-purple-500">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <Store className="w-8 h-8 text-purple-500" />
-                                        <span className="text-3xl font-black text-brand-dark">{analytics.listing_count || 0}</span>
+                                    <div className="glass-panel p-6 border-l-4 border-purple-500">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <Store className="w-8 h-8 text-purple-500" />
+                                            <span className="text-3xl font-black text-brand-dark">{analytics.listing_count || 0}</span>
+                                        </div>
+                                        <h4 className="text-sm font-bold text-subtle uppercase">{t('marketplace.activeListings')}</h4>
+                                        <p className="text-xs text-subtle mt-1">{t('marketplace.activeListingsSubtitle')}</p>
                                     </div>
-                                    <h4 className="text-sm font-bold text-subtle uppercase">Active Listings</h4>
-                                    <p className="text-xs text-subtle mt-1">Currently available for sale</p>
                                 </div>
-                            </div>
 
-                            {/* Performance Insights */}
-                            <div className="glass-panel p-8">
-                                <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center gap-2">
-                                    <TrendingUp className="w-6 h-6 text-brand-green" /> Performance Insights
-                                </h3>
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between py-3 border-b border-surface-200">
-                                        <div>
-                                            <p className="font-bold text-brand-dark">Conversion Rate</p>
-                                            <p className="text-sm text-subtle">Views to contacts ratio</p>
+                                {/* Performance Insights */}
+                                <div className="glass-panel p-8">
+                                    <h3 className="text-2xl font-bold text-brand-dark mb-6 flex items-center gap-2">
+                                        <TrendingUp className="w-6 h-6 text-brand-green" /> {t('marketplace.performanceInsights')}
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between py-3 border-b border-surface-200">
+                                            <div>
+                                                <p className="font-bold text-brand-dark">{t('marketplace.conversionRate')}</p>
+                                                <p className="text-sm text-subtle">{t('marketplace.conversionSubtitle')}</p>
+                                            </div>
+                                            <div className="text-2xl font-black text-brand-green">
+                                                {analytics.total_views > 0 ? ((analytics.total_contacts / analytics.total_views) * 100).toFixed(1) : 0}%
+                                            </div>
                                         </div>
-                                        <div className="text-2xl font-black text-brand-green">
-                                            {analytics.total_views > 0 ? ((analytics.total_contacts / analytics.total_views) * 100).toFixed(1) : 0}%
+                                        <div className="flex items-center justify-between py-3 border-b border-surface-200">
+                                            <div>
+                                                <p className="font-bold text-brand-dark">{t('marketplace.avgViewsPerListing')}</p>
+                                                <p className="text-sm text-subtle">{t('marketplace.avgViewsSubtitle')}</p>
+                                            </div>
+                                            <div className="text-2xl font-black text-brand-dark">
+                                                {analytics.listing_count > 0 ? (analytics.total_views / analytics.listing_count).toFixed(1) : 0}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="flex items-center justify-between py-3 border-b border-surface-200">
-                                        <div>
-                                            <p className="font-bold text-brand-dark">Average Views per Listing</p>
-                                            <p className="text-sm text-subtle">How engaging your listings are</p>
+                                        <div className="bg-brand-green/10 rounded-2xl p-6 mt-6">
+                                            <h4 className="font-bold text-brand-dark mb-2 flex items-center gap-2">
+                                                💡 {t('marketplace.proTip')}
+                                            </h4>
+                                            <p className="text-sm text-subtle">
+                                                {analytics.total_contacts === 0
+                                                    ? t('marketplace.proTipNoContacts')
+                                                    : analytics.total_views / analytics.listing_count < 5
+                                                        ? t('marketplace.proTipLowViews')
+                                                        : t('marketplace.proTipSuccess')}
+                                            </p>
                                         </div>
-                                        <div className="text-2xl font-black text-brand-dark">
-                                            {analytics.listing_count > 0 ? (analytics.total_views / analytics.listing_count).toFixed(1) : 0}
-                                        </div>
-                                    </div>
-                                    <div className="bg-brand-green/10 rounded-2xl p-6 mt-6">
-                                        <h4 className="font-bold text-brand-dark mb-2 flex items-center gap-2">
-                                            💡 Pro Tip
-                                        </h4>
-                                        <p className="text-sm text-subtle">
-                                            {analytics.total_contacts === 0
-                                                ? "Add clear photos and detailed descriptions to boost engagement!"
-                                                : analytics.total_views / analytics.listing_count < 5
-                                                    ? "Try adding quality tags like 'Organic' or 'Premium' to attract more views!"
-                                                    : "Great job! Your listings are performing well. Keep it up!"}
-                                        </p>
                                     </div>
                                 </div>
+                            </>
+                        ) : (
+                            <div className="glass-panel p-12 text-center">
+                                <TrendingUp className="w-16 h-16 text-brand-green mx-auto mb-4" />
+                                <h3 className="text-2xl font-bold text-brand-dark mb-2">{t('marketplace.loadingAnalytics')}</h3>
+                                <p className="text-subtle">{t('marketplace.fetchingPerformance')}</p>
                             </div>
-                        </>
-                    ) : (
-                        <div className="glass-panel p-12 text-center">
-                            <TrendingUp className="w-16 h-16 text-brand-green mx-auto mb-4" />
-                            <h3 className="text-2xl font-bold text-brand-dark mb-2">Loading Analytics...</h3>
-                            <p className="text-subtle">Fetching your performance data</p>
-                        </div>
-                    )}
-                </div>
-            )}
+                        )}
+                    </div>
+                )
+            }
 
             {/* Detail Modal (keeping the existing structure) */}
             <AnimatePresence>
@@ -934,7 +931,7 @@ export default function MarketplacePage() {
                                         {(selectedListing.images && selectedListing.images[0]) || selectedListing.image_url ? (
                                             <img
                                                 src={selectedListing.images?.[0] || selectedListing.image_url}
-                                                alt={selectedListing.crop_name}
+                                                alt={getTranslatedCropName(t, selectedListing.crop_name)}
                                                 className="w-full h-full object-cover"
                                             />
                                         ) : (
@@ -962,21 +959,21 @@ export default function MarketplacePage() {
                                         <div>
                                             <div className="flex items-center gap-2 mb-2">
                                                 <span className="px-3 py-1 rounded-full bg-brand-green/10 text-brand-green text-xs font-bold uppercase tracking-wide">
-                                                    For Sale
+                                                    {t('marketplace.forSale')}
                                                 </span>
                                                 <span className="px-3 py-1 rounded-full bg-surface-100 text-subtle text-xs font-bold uppercase tracking-wide flex items-center gap-1">
                                                     <MapPin className="w-3 h-3" /> {selectedListing.region}
                                                 </span>
                                             </div>
-                                            <h2 className="text-3xl font-black text-brand-dark mb-1">{selectedListing.crop_name}</h2>
+                                            <h2 className="text-3xl font-black text-brand-dark mb-1">{getTranslatedCropName(t, selectedListing.crop_name)}</h2>
                                             <div className="text-base text-subtle font-medium">
-                                                Sold by <span className="text-brand-dark">{selectedListing.farmer_name}</span>
+                                                {t('marketplace.soldBy')} <span className="text-brand-dark">{selectedListing.farmer_name}</span>
                                             </div>
                                             {selectedListing.review_count > 0 && (
                                                 <div className="flex items-center gap-1 mt-2">
                                                     {renderStars(selectedListing.average_rating)}
                                                     <span className="text-sm text-subtle ml-2">
-                                                        {selectedListing.average_rating.toFixed(1)} ({selectedListing.review_count} reviews)
+                                                        {selectedListing.average_rating.toFixed(1)} ({selectedListing.review_count} {t('marketplace.reviews')})
                                                     </span>
                                                 </div>
                                             )}
@@ -1000,22 +997,22 @@ export default function MarketplacePage() {
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="bg-white p-4 rounded-2xl border border-surface-200 shadow-sm">
                                                 <div className="flex items-center gap-2 text-brand-dark font-bold mb-1">
-                                                    <Package className="w-4 h-4 text-brand-green" /> Stock
+                                                    <Package className="w-4 h-4 text-brand-green" /> {t('marketplace.stock')}
                                                 </div>
                                                 <div className="text-lg text-subtle">{selectedListing.quantity_kg} kg</div>
                                             </div>
                                             <div className="bg-white p-4 rounded-2xl border border-surface-200 shadow-sm">
                                                 <div className="flex items-center gap-2 text-brand-dark font-bold mb-1">
-                                                    <Package className="w-4 h-4 text-brand-green" /> Harvest
+                                                    <Package className="w-4 h-4 text-brand-green" /> {t('marketplace.harvest')}
                                                 </div>
-                                                <div className="text-lg text-subtle">{selectedListing.harvest_ready_date || 'Ready Now'}</div>
+                                                <div className="text-lg text-subtle">{selectedListing.harvest_ready_date || t('marketplace.readyNow')}</div>
                                             </div>
                                         </div>
 
                                         <div>
-                                            <h3 className="font-bold text-brand-dark mb-1 text-sm uppercase tracking-wider opacity-60">Description</h3>
+                                            <h3 className="font-bold text-brand-dark mb-1 text-sm uppercase tracking-wider opacity-60">{t('marketplace.description')}</h3>
                                             <p className="text-sm text-subtle leading-relaxed">
-                                                {selectedListing.description || "No description provided by the farmer."}
+                                                {selectedListing.description || t('marketplace.noDescription')}
                                             </p>
                                         </div>
 
@@ -1034,7 +1031,7 @@ export default function MarketplacePage() {
                                                     onClick={(e) => handleDelete(e, selectedListing.id)}
                                                     className="flex-1 py-3 bg-red-50 text-red-600 hover:bg-red-100 rounded-2xl font-bold transition-colors flex items-center justify-center gap-2 text-sm"
                                                 >
-                                                    Delete Listing
+                                                    {t('marketplace.deleteListing')}
                                                 </button>
                                             ) : (
                                                 <a
@@ -1042,7 +1039,7 @@ export default function MarketplacePage() {
                                                     onClick={() => handleContactClick(selectedListing.id)}
                                                     className="flex-1 py-3 bg-brand-dark text-white hover:bg-black rounded-2xl font-bold transition-all shadow-xl shadow-brand-dark/20 flex items-center justify-center gap-2 text-sm"
                                                 >
-                                                    <Phone className="w-4 h-4" /> Contact Farmer
+                                                    <Phone className="w-4 h-4" /> {t('marketplace.contactFarmer')}
                                                 </a>
                                             )}
                                         </div>

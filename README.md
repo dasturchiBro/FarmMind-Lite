@@ -42,6 +42,7 @@
 ## 🛠 Tech Stack
 
 - **Frontend**: Next.js 14, React, Tailwind CSS, Framer Motion, Lucide icons.
+- **Mobile**: Flutter (Android, iOS).
 - **Backend**: Go (Golang), Gin Web Framework, pgx (PostgreSQL driver).
 - **Database**: PostgreSQL with complex analytical queries.
 - **AI**: Gemini 1.5/2.5 Flash API via Vertex AI.
@@ -74,6 +75,16 @@
 3. Run development server:
    ```bash
    npm run dev
+   ```
+
+### Mobile App Setup
+1. Ensure Flutter is installed ([flutter.dev](https://flutter.dev))
+2. Navigate to `mobile/`
+3. Set API base URL in `lib/main.dart` (see `mobile/README.md` for device-specific URLs)
+4. Run:
+   ```bash
+   flutter pub get
+   flutter run
    ```
 
 ---

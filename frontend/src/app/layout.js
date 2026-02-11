@@ -4,12 +4,25 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Inter, Outfit } from 'next/font/google';
+import { I18nextProvider } from 'react-i18next';
+import i18n from '../i18n';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import './globals.css';
+import { useTranslation } from 'react-i18next';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-body' });
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-display' });
 
 export default function RootLayout({ children }) {
+    return (
+        <I18nextProvider i18n={i18n}>
+            <LayoutContent>{children}</LayoutContent>
+        </I18nextProvider>
+    );
+}
+
+function LayoutContent({ children }) {
+    const { t } = useTranslation();
     const pathname = usePathname();
     const router = useRouter();
     const [user, setUser] = useState(null);
@@ -78,19 +91,21 @@ export default function RootLayout({ children }) {
                                     {user ? (
                                         <div className="hidden md:flex items-center gap-1 text-sm font-medium">
                                             {/* Show Marketplace for EVERYONE */}
-                                            <NavLink href="/marketplace" active={pathname === '/marketplace'}>Marketplace</NavLink>
+                                            <NavLink href="/marketplace" active={pathname === '/marketplace'}>{t('common.marketplace')}</NavLink>
 
                                             {/* Show Tools ONLY for Farmers */}
                                             {user.role === 'farmer' && (
                                                 <>
-                                                    <NavLink href="/irrigation" active={pathname === '/irrigation'}>Irrigation</NavLink>
-                                                    <NavLink href="/doctor" active={pathname === '/doctor'}>AI Doctor</NavLink>
-                                                    <NavLink href="/market" active={pathname === '/market'}>Trends</NavLink>
-                                                    <NavLink href="/estimator" active={pathname === '/estimator'}>Estimator</NavLink>
+                                                    <NavLink href="/calendar" active={pathname === '/calendar'}>{t('common.calendar')}</NavLink>
+                                                    <NavLink href="/irrigation" active={pathname === '/irrigation'}>{t('common.irrigation')}</NavLink>
+                                                    <NavLink href="/doctor" active={pathname === '/doctor'}>{t('common.doctor')}</NavLink>
+                                                    <NavLink href="/market" active={pathname === '/market'}>{t('common.market')}</NavLink>
+                                                    <NavLink href="/estimator" active={pathname === '/estimator'}>{t('common.estimator')}</NavLink>
                                                 </>
                                             )}
 
                                             <div className="flex items-center gap-4 ml-6 pl-6 border-l border-slate-200">
+                                                <LanguageSwitcher />
                                                 <div className="text-right">
                                                     <div className="text-brand-dark font-bold leading-none">{user.full_name ? user.full_name.split(' ')[0] : 'User'}</div>
                                                     <div className="text-xs text-subtle capitalize">{user.role}</div>
@@ -103,14 +118,17 @@ export default function RootLayout({ children }) {
                                                     }}
                                                     className="text-xs font-semibold text-subtle hover:text-brand-dark px-3 py-1.5 rounded-lg hover:bg-black/5 transition-colors"
                                                 >
-                                                    Log Out
+                                                    {t('common.logout')}
                                                 </button>
                                             </div>
                                         </div>
                                     ) : (
-                                        <Link href="/register" className="btn-primary py-2 px-5 text-sm shadow-none">
-                                            Get Started
-                                        </Link>
+                                        <div className="flex items-center gap-3">
+                                            <LanguageSwitcher />
+                                            <Link href="/register" className="btn-primary py-2 px-5 text-sm shadow-none">
+                                                {t('common.login')}
+                                            </Link>
+                                        </div>
                                     )}
                                 </div>
                             </nav>

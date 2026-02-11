@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Sprout, MapPin, Phone, User, Mail, Lock, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { parseJsonResponse } from '../lib/api';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -37,7 +38,7 @@ export default function RegisterPage() {
                 cache: 'no-store'
             });
 
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
 
             if (res.ok) {
                 localStorage.setItem('farm_user', JSON.stringify(data.user));
@@ -108,7 +109,7 @@ export default function RegisterPage() {
                             <label className="text-sm font-semibold text-brand-dark ml-1">Full Name</label>
                             <input
                                 type="text"
-                                placeholder="Alisher Navoiy"
+                                placeholder="Teshayev Boltavoy"
                                 value={formData.full_name}
                                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                                 className="input-modern w-full"

@@ -1,10 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { Upload, Scan, CheckCircle, AlertTriangle, Activity } from 'lucide-react';
+import ExportShare from '../../components/ExportShare';
+import { parseJsonResponse } from '../../lib/api';
 
 export default function DoctorPage() {
+    const { t } = useTranslation();
     const [image, setImage] = useState(null);
     const [analyzing, setAnalyzing] = useState(false);
     const [result, setResult] = useState(null);
@@ -36,16 +40,16 @@ export default function DoctorPage() {
                 body: formData
             });
 
-            const data = await res.json();
+            const data = await parseJsonResponse(res);
 
             if (res.ok) {
                 setResult(data);
             } else {
-                alert('Analysis failed: ' + (data.error || 'Unknown error'));
+                alert(t('errors.somethingWrong') + ': ' + (data.error || t('errors.serverError')));
             }
         } catch (err) {
             console.error(err);
-            alert('Error connecting to AI service');
+            alert(t('errors.networkError'));
         } finally {
             setAnalyzing(false);
         }
@@ -57,9 +61,9 @@ export default function DoctorPage() {
                 <div className="inline-flex items-center justify-center p-3 bg-brand-green/10 rounded-2xl mb-2">
                     <Activity className="w-8 h-8 text-brand-green" />
                 </div>
-                <h1 className="text-4xl heading-xl">AI Crop Doctor</h1>
+                <h1 className="text-4xl heading-xl text-brand-dark">{t('doctor.title')}</h1>
                 <p className="text-subtle text-lg max-w-2xl mx-auto">
-                    Upload a photo of your crop. Our advanced computer vision model will diagnose diseases and recommend treatments in seconds.
+                    {t('doctor.subtitle')}
                 </p>
             </div>
 
@@ -93,7 +97,7 @@ export default function DoctorPage() {
                                     onClick={(e) => { e.stopPropagation(); analyzeCrop(); }}
                                     className="btn-primary flex items-center gap-2 z-20"
                                 >
-                                    <Scan className="w-4 h-4" /> Analyze Now
+                                    <Scan className="w-4 h-4" /> {t('doctor.analyzeNow')}
                                 </button>
                             )}
                         </div>
@@ -103,8 +107,8 @@ export default function DoctorPage() {
                                 <Upload className="w-8 h-8 text-subtle" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-brand-dark">Click to Upload Image</h3>
-                                <p className="text-sm text-subtle mt-1">JPEG or PNG. Max 5MB.</p>
+                                <h3 className="text-lg font-bold text-brand-dark">{t('doctor.clickToUpload')}</h3>
+                                <p className="text-sm text-subtle mt-1">{t('doctor.uploadSub')}</p>
                             </div>
                         </div>
                     )}
@@ -115,8 +119,8 @@ export default function DoctorPage() {
                     {analyzing && (
                         <div className="glass-panel p-8 h-full flex flex-col items-center justify-center text-center space-y-4">
                             <div className="w-16 h-16 border-4 border-brand-green/20 border-t-brand-green rounded-full animate-spin" />
-                            <h3 className="text-xl font-bold text-brand-dark">Analyzing Cell Structure...</h3>
-                            <p className="text-subtle">Checking for pathogens and nutrient deficiencies.</p>
+                            <h3 className="text-xl font-bold text-brand-dark">{t('doctor.analyzing')}</h3>
+                            <p className="text-subtle">{t('doctor.analyzingSub')}</p>
                         </div>
                     )}
 
@@ -126,50 +130,55 @@ export default function DoctorPage() {
                             animate={{ opacity: 1, x: 0 }}
                             className={`glass-panel p-8 h-full space-y-6 border ${result.disease.toLowerCase() === 'healthy' || result.severity.toLowerCase() === 'none' ? 'border-brand-green/30' : 'border-red-200'}`}
                         >
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className={`p-3 rounded-xl ${result.disease.toLowerCase() === 'healthy' || result.severity.toLowerCase() === 'none' ? 'bg-brand-green/10' : 'bg-red-100'}`}>
-                                    {result.disease.toLowerCase() === 'healthy' || result.severity.toLowerCase() === 'none' ? (
-                                        <CheckCircle className="w-6 h-6 text-brand-green" />
-                                    ) : (
-                                        <AlertTriangle className="w-6 h-6 text-red-600" />
-                                    )}
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className={`p-3 rounded-xl ${result.disease.toLowerCase() === 'healthy' || result.severity.toLowerCase() === 'none' ? 'bg-brand-green/10' : 'bg-red-100'}`}>
+                                        {result.disease.toLowerCase() === 'healthy' || result.severity.toLowerCase() === 'none' ? (
+                                            <CheckCircle className="w-6 h-6 text-brand-green" />
+                                        ) : (
+                                            <AlertTriangle className="w-6 h-6 text-red-600" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1">
+                                        <h2 className="text-2xl font-bold text-brand-dark">
+                                            {(result.disease.toLowerCase() === 'healthy' || result.severity.toLowerCase() === 'none') ? t('doctor.healthy') : t('doctor.issueDetected')}
+                                        </h2>
+                                        <p className={`font-medium ${result.disease.toLowerCase() === 'healthy' || result.severity.toLowerCase() === 'none' ? 'text-brand-green' : 'text-red-600'}`}>
+                                            {result.disease}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <h2 className="text-2xl font-bold text-brand-dark">
-                                        {(result.disease.toLowerCase() === 'healthy' || result.severity.toLowerCase() === 'none') ? 'Diagnosis: Healthy' : 'Issue Detected'}
-                                    </h2>
-                                    <p className={`font-medium ${result.disease.toLowerCase() === 'healthy' || result.severity.toLowerCase() === 'none' ? 'text-brand-green' : 'text-red-600'}`}>
-                                        {result.disease}
-                                    </p>
-                                </div>
+                                <ExportShare targetId="diagnosis-result" title={`${result.disease} Diagnosis`} data={result} />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-surface-100 p-4 rounded-xl">
-                                    <div className="text-xs text-subtle uppercase font-bold">Confidence</div>
-                                    <div className="text-2xl font-black text-brand-dark">{result.confidence}</div>
+                            <div id="diagnosis-result" className="space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-surface-100 p-4 rounded-xl">
+                                        <div className="text-xs text-subtle uppercase font-bold">{t('doctor.confidence')}</div>
+                                        <div className="text-2xl font-black text-brand-dark">{result.confidence}</div>
+                                    </div>
+                                    <div className="bg-surface-100 p-4 rounded-xl">
+                                        <div className="text-xs text-subtle uppercase font-bold">{t('doctor.severity')}</div>
+                                        <div className={`text-2xl font-black ${result.severity.toLowerCase() === 'none' ? 'text-brand-green' : 'text-brand-gold'}`}>{result.severity}</div>
+                                    </div>
                                 </div>
-                                <div className="bg-surface-100 p-4 rounded-xl">
-                                    <div className="text-xs text-subtle uppercase font-bold">Severity</div>
-                                    <div className={`text-2xl font-black ${result.severity.toLowerCase() === 'none' ? 'text-brand-green' : 'text-brand-gold'}`}>{result.severity}</div>
-                                </div>
-                            </div>
 
-                            <div>
-                                <h3 className="text-lg font-bold text-brand-dark mb-3 flex items-center gap-2">
-                                    <CheckCircle className="w-5 h-5 text-brand-green" /> Recommended Treatment
-                                </h3>
-                                <div className="bg-surface-50 rounded-xl p-4 border border-surface-100">
-                                    <ul className="space-y-3">
-                                        {result.treatment.map((step, i) => (
-                                            <li key={i} className="flex gap-3 text-sm text-brand-dark">
-                                                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-green/10 text-brand-green font-bold flex items-center justify-center text-xs">
-                                                    {i + 1}
-                                                </span>
-                                                {step}
-                                            </li>
-                                        ))}
-                                    </ul>
+                                <div>
+                                    <h3 className="text-lg font-bold text-brand-dark mb-3 flex items-center gap-2">
+                                        <CheckCircle className="w-5 h-5 text-brand-green" /> {t('doctor.treatment')}
+                                    </h3>
+                                    <div className="bg-surface-50 rounded-xl p-4 border border-surface-100">
+                                        <ul className="space-y-3">
+                                            {result.treatment.map((step, i) => (
+                                                <li key={i} className="flex gap-3 text-sm text-brand-dark">
+                                                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-green/10 text-brand-green font-bold flex items-center justify-center text-xs">
+                                                        {i + 1}
+                                                    </span>
+                                                    {step}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>
@@ -178,7 +187,7 @@ export default function DoctorPage() {
                     {!analyzing && !result && (
                         <div className="glass-panel p-8 h-full flex flex-col items-center justify-center text-center opacity-50">
                             <Scan className="w-16 h-16 text-subtle mb-4" />
-                            <p className="text-subtle">Waiting for image analysis...</p>
+                            <p className="text-subtle">{t('doctor.waiting')}</p>
                         </div>
                     )}
                 </div>

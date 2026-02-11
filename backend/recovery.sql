@@ -142,3 +142,32 @@ ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
 
 CREATE INDEX IF NOT EXISTS idx_market_prices_tier ON market_prices(crop_type_id, region, volume_tier);
 CREATE INDEX IF NOT EXISTS idx_market_prices_active ON market_prices(is_active);
+
+-- 000012_add_user_events
+CREATE TABLE IF NOT EXISTS user_events (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    date DATE NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 7. Add More Vegetables and Fruits (Migration 13)
+INSERT INTO crop_types (name, fao_data) VALUES 
+('Cucumber', '{"category": "Vegetables"}'),
+('Bell Pepper', '{"category": "Vegetables"}'),
+('Eggplant', '{"category": "Vegetables"}'),
+('Garlic', '{"category": "Vegetables"}'),
+('Pumpkin', '{"category": "Vegetables"}'),
+('Cabbage', '{"category": "Vegetables"}'),
+('Beetroot', '{"category": "Vegetables"}'),
+('Apple', '{"category": "Fruits"}'),
+('Grape', '{"category": "Fruits"}'),
+('Peach', '{"category": "Fruits"}'),
+('Cherry', '{"category": "Fruits"}'),
+('Apricot', '{"category": "Fruits"}'),
+('Melon', '{"category": "Fruits"}'),
+('Watermelon', '{"category": "Fruits"}')
+ON CONFLICT (name) DO NOTHING;

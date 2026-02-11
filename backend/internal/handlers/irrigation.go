@@ -17,6 +17,7 @@ func (h *Handler) GetIrrigationSchedule(c *gin.Context) {
 	crop := c.Query("crop")
 	dateStr := c.Query("planting_date")
 	region := c.Query("region") // New parameter
+	lang := c.Query("lang")
 
 	if crop == "" || dateStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "crop and planting_date are required"})
@@ -29,7 +30,7 @@ func (h *Handler) GetIrrigationSchedule(c *gin.Context) {
 		return
 	}
 
-	schedule := irrigation.GetSchedule(crop, plantingDate, region)
+	schedule := irrigation.GetSchedule(crop, plantingDate, region, lang)
 	c.JSON(http.StatusOK, schedule)
 }
 

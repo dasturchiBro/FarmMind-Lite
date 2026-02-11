@@ -60,8 +60,8 @@ func (h *Handler) GetLatestPrices(c *gin.Context) {
 		SELECT 
 			c.name as crop_name,
 			m1.region,
-			COALESCE(MAX(CASE WHEN m1.volume_tier = 'retail' THEN m1.price_per_kg END), 0) as retail_price,
-			COALESCE(MAX(CASE WHEN m1.volume_tier = 'wholesale' THEN m1.price_per_kg END), 0) as wholesale_price,
+			COALESCE(AVG(CASE WHEN m1.volume_tier = 'retail' THEN m1.price_per_kg END), 0) as retail_price,
+			COALESCE(AVG(CASE WHEN m1.volume_tier = 'wholesale' THEN m1.price_per_kg END), 0) as wholesale_price,
 			MAX(m1.submitted_at) as last_update,
 			(
 				SELECT json_agg(json_build_object(
@@ -79,8 +79,8 @@ func (h *Handler) GetLatestPrices(c *gin.Context) {
 					ORDER BY submitted_at ASC
 				) h
 			) as history,
-			(SELECT COUNT(DISTINCT submitted_by) FROM market_prices v WHERE v.crop_type_id = m1.crop_type_id AND v.region = m1.region AND v.submitted_at >= NOW() - INTERVAL '4 hours' AND v.is_active = TRUE AND v.submitted_by IS NOT NULL) as dist_farmers,
-			(SELECT COUNT(*) FROM market_prices v WHERE v.crop_type_id = m1.crop_type_id AND v.region = m1.region AND v.submitted_at >= NOW() - INTERVAL '4 hours' AND v.is_active = TRUE AND v.submitted_by IS NULL) as anon_reports,
+			(SELECT COUNT(DISTINCT submitted_by) FROM market_prices v WHERE v.crop_type_id = m1.crop_type_id AND v.region = m1.region AND v.submitted_at >= NOW() - INTERVAL '48 hours' AND v.is_active = TRUE AND v.submitted_by IS NOT NULL) as dist_farmers,
+			(SELECT COUNT(*) FROM market_prices v WHERE v.crop_type_id = m1.crop_type_id AND v.region = m1.region AND v.submitted_at >= NOW() - INTERVAL '48 hours' AND v.is_active = TRUE AND v.submitted_by IS NULL) as anon_reports,
 			(SELECT submitted_by FROM market_prices s WHERE s.crop_type_id = m1.crop_type_id AND s.region = m1.region AND s.is_active = TRUE ORDER BY submitted_at DESC LIMIT 1) as owner,
 			(SELECT id FROM market_prices i WHERE i.crop_type_id = m1.crop_type_id AND i.region = m1.region AND i.is_active = TRUE ORDER BY submitted_at DESC LIMIT 1) as latest_id
 		FROM market_prices m1

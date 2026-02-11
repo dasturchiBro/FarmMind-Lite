@@ -9,42 +9,42 @@ type Estimate struct {
 	AvgPricePerKG float64 `json:"avg_price_per_kg"`
 }
 
-// GetCropEstimate provides rough ranges based on FAO/USDA global and regional averages.
+// GetCropEstimate provides rough ranges based on Uzbekistan averages and FAO data.
 func GetCropEstimate(cropName string, hectares float64, priceOverride float64) Estimate {
 	var yieldMin, yieldMax, avgPrice float64
 
 	switch cropName {
 	case "Wheat":
-		yieldMin, yieldMax = 2500, 4500 // kg per hectare
-		avgPrice = 0.42                 // Default fallback
+		yieldMin, yieldMax = 4000, 6000 // kg per hectare (Uzbekistan avg: 4.5-5.5t)
+		avgPrice = 0.35                 // ~$0.35 per kg
 	case "Rice":
-		yieldMin, yieldMax = 3500, 5500
-		avgPrice = 0.85
+		yieldMin, yieldMax = 4500, 6500
+		avgPrice = 1.10
 	case "Tomato":
-		yieldMin, yieldMax = 15000, 30000
-		avgPrice = 0.50
+		yieldMin, yieldMax = 25000, 45000
+		avgPrice = 0.45
 	case "Onion":
-		yieldMin, yieldMax = 10000, 20000
-		avgPrice = 0.33 // Default fallback
+		yieldMin, yieldMax = 20000, 35000
+		avgPrice = 0.25
 	case "Cotton":
-		yieldMin, yieldMax = 1000, 2500
-		avgPrice = 0.50 // Default fallback
+		yieldMin, yieldMax = 2500, 3500 // Uzbekistan avg: ~2.8-3.2t
+		avgPrice = 0.85
 	case "Carrot":
-		yieldMin, yieldMax = 15000, 30000
-		avgPrice = 0.35
+		yieldMin, yieldMax = 20000, 40000
+		avgPrice = 0.20
 	case "Maize":
-		yieldMin, yieldMax = 4000, 7000
-		avgPrice = 0.18
+		yieldMin, yieldMax = 5000, 9000
+		avgPrice = 0.22
 	case "Potato":
-		yieldMin, yieldMax = 12000, 22000
-		avgPrice = 0.30
+		yieldMin, yieldMax = 18000, 28000
+		avgPrice = 0.32
 	default:
 		// Fallback for unknown crops
-		yieldMin, yieldMax = 500, 1500
-		avgPrice = 0.10 // Small fallback instead of $0
+		yieldMin, yieldMax = 1000, 3000
+		avgPrice = 0.30
 	}
 
-	// Use price from database if available
+	// Use price from database if available (dynamic crowdsourced price)
 	if priceOverride > 0 {
 		avgPrice = priceOverride
 	}

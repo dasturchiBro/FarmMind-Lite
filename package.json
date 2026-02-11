@@ -1,0 +1,10 @@
+{
+  "name": "farmmind-lite-root",
+  "version": "1.0.0",
+  "description": "FarmMind Lite - Root project",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}
